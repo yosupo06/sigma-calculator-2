@@ -1,0 +1,31 @@
+{
+  "name": "sigma-calculator-2",
+  "version": "0.1.0",
+  "private": true,
+  "main": "public/index.js",
+  "dependencies": {
+    "@emotion/react": "^11.10.5",
+    "@emotion/styled": "^11.10.5",
+    "@fontsource/roboto": "^4.5.8",
+    "@mui/material": "^5.10.13",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "scripts": {},
+  "devDependencies": {
+    "@babel/core": "^7.20.2",
+    "@babel/preset-env": "^7.20.2",
+    "@babel/preset-react": "^7.18.6",
+    "@babel/preset-typescript": "^7.18.6",
+    "@monaco-editor/react": "^4.4.6",
+    "@types/node": "^18.11.9",
+    "@types/react-dom": "^18.0.8",
+    "babel-loader": "^9.1.0",
+    "html-webpack-plugin": "^5.5.0",
+    "monaco-editor": "^0.34.1",
+    "typescript": "^4.8.4",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^4.10.0",
+    "webpack-dev-server": "^4.11.1"
+  }
+}
