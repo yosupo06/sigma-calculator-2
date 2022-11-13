@@ -6,7 +6,7 @@ interface Props {
   language: "txt" | "cpp";
   onChange?: (value: string) => void;
   readOnly: boolean;
-  autoHeight: boolean;
+  height: number;
 }
 
 const editorMode = (lang: "txt" | "cpp") => {
@@ -19,9 +19,7 @@ const editorMode = (lang: "txt" | "cpp") => {
 };
 
 const SourceEditor: React.FC<Props> = (props) => {
-  const minHeight = 100;
-  const { value, language, onChange, readOnly, autoHeight } = props;
-  const [editorHeight, setEditorHeight] = useState(minHeight);
+  const { value, language, onChange, readOnly, height } = props;
 
   const mode = editorMode(language);
 
@@ -29,16 +27,9 @@ const SourceEditor: React.FC<Props> = (props) => {
     <Editor
       value={value}
       language={mode}
-      height={autoHeight ? undefined: editorHeight}
+      height={height}
       onChange={(src) => {
         if (src !== undefined && onChange) onChange(src);
-      }}
-      onMount={(editor) => {
-        editor.onDidContentSizeChange(() => {
-          if (autoHeight) {
-            setEditorHeight(Math.max(minHeight, editor.getContentHeight()));
-          }
-        });
       }}
       options={{
         readOnly: readOnly,
