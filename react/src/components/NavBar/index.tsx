@@ -13,7 +13,7 @@ const NavBar = () => {
       <AppBar position="static">
         <Toolbar>
           <Avatar src={logo} sx={{height: 64, width:64}}/>
-          <Typography variant="h6" noWrap>Sigma Calculator</Typography>
+          <Typography variant="h6" noWrap>Sigma Calculator (Beta)</Typography>
           <Button
             color="inherit"
             href="https://github.com/yosupo06/sigma-calculator-2"
