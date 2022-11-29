@@ -5,7 +5,6 @@ use std::fmt::{Display, Formatter};
 use std::hash::Hash;
 use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 
-
 use num::rational::BigRational;
 use num::traits::Zero;
 use num::traits::{One, Pow};
@@ -15,7 +14,6 @@ use crate::math::faulhaber;
 
 use super::linear_polynomial::LinearPolynomial;
 use super::monomial::Monomial;
-
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Polynomial<T>
@@ -32,12 +30,12 @@ impl<T: Ord + Clone + Hash> Polynomial<T> {
             None
         }
     }
-    pub fn to_linear_polynomial(&self) -> Option<LinearPolynomial<T>> {
+    pub fn to_linear_polynomial(&self) -> Option<LinearPolynomial<T, BigRational>> {
         if self.iter().find(|(p, _)| p.degree() >= 2).is_some() {
             return None;
         }
 
-        let mut result = LinearPolynomial::new();
+        let mut result = LinearPolynomial::default();
         for (m, r) in self.iter() {
             let v = if m.degree() == 0 {
                 None
@@ -114,8 +112,8 @@ impl<T: Ord + Clone + Hash> From<Monomial<T>> for Polynomial<T> {
         }
     }
 }
-impl<T: Ord + Clone + Hash> From<LinearPolynomial<T>> for Polynomial<T> {
-    fn from(item: LinearPolynomial<T>) -> Self {
+impl<T: Ord + Clone + Hash> From<LinearPolynomial<T, BigRational>> for Polynomial<T> {
+    fn from(item: LinearPolynomial<T, BigRational>) -> Self {
         Self::from_iter(item.into_iter().map(|(v, c)| {
             if let Some(v) = v {
                 (Monomial::from(v), c)

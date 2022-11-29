@@ -1,6 +1,6 @@
 use num::{
     integer::{gcd, lcm},
-    BigInt, One, Signed, Zero, BigRational,
+    BigInt, BigRational, One, Signed, Zero,
 };
 
 use crate::{polynomial::linear_polynomial::LinearPolynomial, variable::Variable};
@@ -55,7 +55,7 @@ pub fn faulhaber(n: usize) -> Vec<BigRational> {
     todo!("todo")
 }
 
-impl<'e> LinearPolynomial<Variable<'e>> {
+impl<'e> LinearPolynomial<Variable<'e>, BigRational> {
     pub fn numer_gcd(&self) -> BigInt {
         // some x s.t. (evaluated p) is integer => x | (evaluated p)
         if self.is_zero() {

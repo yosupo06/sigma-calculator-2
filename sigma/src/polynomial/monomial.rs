@@ -4,8 +4,8 @@ use std::fmt::{Display, Formatter};
 use std::hash::Hash;
 use std::ops::Mul;
 
-use num::One;
 use num::one;
+use num::One;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct Monomial<T>

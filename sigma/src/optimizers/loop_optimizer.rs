@@ -12,10 +12,10 @@ use super::Optimizer;
 #[derive(Debug, Clone)]
 struct LinearIsNotNeg<'e> {
     // evaluated p isn't integer => undefined
-    p: LinearPolynomial<Variable<'e>>,
+    p: LinearPolynomial<Variable<'e>, BigRational>,
 }
 impl<'e> LinearIsNotNeg<'e> {
-    fn is_not_neg(p: LinearPolynomial<Variable<'e>>) -> Self {
+    fn is_not_neg(p: LinearPolynomial<Variable<'e>, BigRational>) -> Self {
         if p == Default::default() {
             return LinearIsNotNeg {
                 p: Default::default(),
@@ -37,11 +37,11 @@ impl<'e> From<LinearIsNotNeg<'e>> for Function<'e> {
 #[derive(Debug, Clone)]
 struct LinearIsDivisor<'e> {
     // evaluated p isn't integer => undefined
-    p: LinearPolynomial<Variable<'e>>,
+    p: LinearPolynomial<Variable<'e>, BigRational>,
     c: BigInt,
 }
 impl<'e> LinearIsDivisor<'e> {
-    fn is_divisor(p: LinearPolynomial<Variable<'e>>, c: BigInt) -> Self {
+    fn is_divisor(p: LinearPolynomial<Variable<'e>, BigRational>, c: BigInt) -> Self {
         assert_ne!(c, BigInt::zero());
 
         if p == Default::default() {
@@ -78,7 +78,9 @@ impl<'e> From<LinearCondition<'e>> for Function<'e> {
     }
 }
 
-fn to_linear_polynomial<'e>(f: &Function<'e>) -> Option<LinearPolynomial<Variable<'e>>> {
+fn to_linear_polynomial<'e>(
+    f: &Function<'e>,
+) -> Option<LinearPolynomial<Variable<'e>, BigRational>> {
     match f.data() {
         FunctionData::PolynomialAsInt { p } => p.to_linear_polynomial(),
         _ => None,
@@ -112,14 +114,14 @@ fn sum_linear_is_not_neg_pol<'e>(
     let mut r_conds = vec![];
 
     // x.1 / x.0 <= y.1 / y.0
-    let assume_le = |x: &(BigRational, LinearPolynomial<Variable<'e>>),
-                     y: &(BigRational, LinearPolynomial<Variable<'e>>)|
+    let assume_le = |x: &(BigRational, LinearPolynomial<Variable<'e>, BigRational>),
+                     y: &(BigRational, LinearPolynomial<Variable<'e>, BigRational>)|
      -> LinearIsNotNeg {
         LinearIsNotNeg::is_not_neg(y.1.clone() * x.0.clone() - x.1.clone() * y.0.clone())
     };
     // x.1 / x.0 < y.1 / y.0
-    let assume_lt = |x: &(BigRational, LinearPolynomial<Variable<'e>>),
-                     y: &(BigRational, LinearPolynomial<Variable<'e>>)|
+    let assume_lt = |x: &(BigRational, LinearPolynomial<Variable<'e>, BigRational>),
+                     y: &(BigRational, LinearPolynomial<Variable<'e>, BigRational>)|
      -> LinearIsNotNeg {
         LinearIsNotNeg::is_not_neg(
             y.1.clone() * x.0.clone() - x.1.clone() * y.0.clone() - BigRational::one().into(),

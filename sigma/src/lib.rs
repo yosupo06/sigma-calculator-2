@@ -1,5 +1,9 @@
 use function::Function;
-use optimizers::{ChainedOptimizer, ConstantOptimizer, ObviousBinOpOptimizer, ObviousIfOptimizer, SimplifyConditionOptimizer, PolynomialOptimizer, loop_optimizer::LoopIfSumOptimizer, FullyOptimizer, Optimizer};
+use optimizers::{
+    loop_optimizer::LoopIfSumOptimizer, ChainedOptimizer, ConstantOptimizer, FullyOptimizer,
+    ObviousBinOpOptimizer, ObviousIfOptimizer, Optimizer, PolynomialOptimizer,
+    SimplifyConditionOptimizer,
+};
 use parser::parse;
 use printer::cpp_print;
 use variable::VariableManager;
@@ -15,9 +19,8 @@ pub mod math;
 pub mod optimizers;
 pub mod parser;
 pub mod polynomial;
-pub mod variable;
 pub mod printer;
-
+pub mod variable;
 
 fn default_optimize(f: Function) -> Function {
     let optimizer = ChainedOptimizer {

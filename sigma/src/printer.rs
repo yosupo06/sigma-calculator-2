@@ -1,6 +1,10 @@
-use num::{Zero, BigInt, integer::{gcd, lcm, gcd_lcm}, One};
+use num::{integer::lcm, BigRational, One, Zero};
 
-use crate::{function::{Function, FunctionData}, polynomial::{polynomial::Polynomial, linear_polynomial::LinearPolynomial}, variable::Variable};
+use crate::{
+    function::{Function, FunctionData},
+    polynomial::{linear_polynomial::LinearPolynomial, polynomial::Polynomial},
+    variable::Variable,
+};
 /*
     fn to_source_lines(&self) -> Vec<String> {
         let shift = |v: Vec<String>| -> Vec<String> {
@@ -72,20 +76,30 @@ fn print_polynomial<'e>(p: &Polynomial<Variable<'e>>) -> String {
     if p.is_zero() {
         return "0".to_string();
     }
-    let g = p.iter().map(|(_, c)| c.denom().clone()).reduce(|x, y| lcm(x, y)).unwrap();
+    let g = p
+        .iter()
+        .map(|(_, c)| c.denom().clone())
+        .reduce(|x, y| lcm(x, y))
+        .unwrap();
 
-    let result = p.iter().map(|(m, c)| {
-        let coef = c.numer() * g.clone() / c.denom();
-        if m.is_one() {
-            format!("Int({})", coef)
-        } else {
-            let s = m.iter().map(|(v, r)| {
-                (0..*r).map(|_| v.name()).collect::<Vec<String>>().join("*")
-            }).collect::<Vec<String>>().join("*");
-            format!("{}*{}", coef, s)
-        }
-    }).collect::<Vec<String>>().join("+");
-    
+    let result = p
+        .iter()
+        .map(|(m, c)| {
+            let coef = c.numer() * g.clone() / c.denom();
+            if m.is_one() {
+                format!("Int({})", coef)
+            } else {
+                let s = m
+                    .iter()
+                    .map(|(v, r)| (0..*r).map(|_| v.name()).collect::<Vec<String>>().join("*"))
+                    .collect::<Vec<String>>()
+                    .join("*");
+                format!("{}*{}", coef, s)
+            }
+        })
+        .collect::<Vec<String>>()
+        .join("+");
+
     if g.is_one() {
         result
     } else {
@@ -93,21 +107,29 @@ fn print_polynomial<'e>(p: &Polynomial<Variable<'e>>) -> String {
     }
 }
 
-fn print_linear_polynomial<'e>(p: &LinearPolynomial<Variable<'e>>) -> String {
+fn print_linear_polynomial<'e>(p: &LinearPolynomial<Variable<'e>, BigRational>) -> String {
     if p.is_zero() {
         return "0".to_string();
     }
-    let g = p.iter().map(|(_, c)| c.denom().clone()).reduce(|x, y| lcm(x, y)).unwrap();
+    let g = p
+        .iter()
+        .map(|(_, c)| c.denom().clone())
+        .reduce(|x, y| lcm(x, y))
+        .unwrap();
 
-    let result = p.iter().map(|(v, c)| {
-        let coef = c.numer() * g.clone() / c.denom();
-        if let Some(v) = v {
-            format!("{}*{}", coef, v.name())
-        } else {
-            format!("Int({})", coef)
-        }
-    }).collect::<Vec<String>>().join("+");
-    
+    let result = p
+        .iter()
+        .map(|(v, c)| {
+            let coef = c.numer() * g.clone() / c.denom();
+            if let Some(v) = v {
+                format!("{}*{}", coef, v.name())
+            } else {
+                format!("Int({})", coef)
+            }
+        })
+        .collect::<Vec<String>>()
+        .join("+");
+
     if g.is_one() {
         result
     } else {
@@ -116,9 +138,8 @@ fn print_linear_polynomial<'e>(p: &LinearPolynomial<Variable<'e>>) -> String {
 }
 
 fn to_cpp_source_lines<'e>(f: &Function<'e>) -> Vec<String> {
-    let shift = |v: Vec<String>| -> Vec<String> {
-        v.into_iter().map(|x| "  ".to_string() + &x).collect()
-    };
+    let shift =
+        |v: Vec<String>| -> Vec<String> { v.into_iter().map(|x| "  ".to_string() + &x).collect() };
     match f.data() {
         FunctionData::PolynomialAsInt { p } => vec![format!("sum += ({});", print_polynomial(p))],
         FunctionData::Add { l, r, .. } => {
@@ -127,7 +148,7 @@ fn to_cpp_source_lines<'e>(f: &Function<'e>) -> Vec<String> {
             ls.append(&mut rs);
             ls
         }
-        FunctionData::If { cond, f, .. } => {            
+        FunctionData::If { cond, f, .. } => {
             let mut v = vec![format!("if ({}) {{", to_cpp_source(cond))];
             v.append(&mut shift(to_cpp_source_lines(f)));
             v.push("}".to_string());
@@ -139,17 +160,24 @@ fn to_cpp_source_lines<'e>(f: &Function<'e>) -> Vec<String> {
         FunctionData::IntIsNotNeg { p } => {
             vec![format!("{} >= 0", print_linear_polynomial(p))]
         }
-        _ => todo!()
+        _ => todo!(),
     }
 }
 fn to_cpp_source<'e>(f: &Function<'e>) -> String {
-     to_cpp_source_lines(f).join("\n")
+    to_cpp_source_lines(f).join("\n")
 }
 
 pub fn cpp_print<'e>(f: &Function<'e>) -> String {
     if let FunctionData::Declare { name, args, body } = f.data() {
         let mut s: String = "".to_string();
-        s += &format!("Int {}({}) {{\n", name, args.iter().map(|v| format!("Int {}", v.name())).collect::<Vec<String>>().join(", "));
+        s += &format!(
+            "Int {}({}) {{\n",
+            name,
+            args.iter()
+                .map(|v| format!("Int {}", v.name()))
+                .collect::<Vec<String>>()
+                .join(", ")
+        );
         s += &"Int sum = Int(0);\n";
         s += &to_cpp_source(body);
         s += &"\nreturn sum;\n";

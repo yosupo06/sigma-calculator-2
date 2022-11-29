@@ -1,66 +1,148 @@
 use std::{
-    collections::HashMap,
+    collections::{hash_map::IntoIter, HashMap},
     hash::Hash,
+    iter::Sum,
     ops::{Add, Div, Mul, Neg, Sub},
 };
 
-use num::{BigRational, Zero};
+use num::Zero;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LinearPolynomial<K>
-where
-    K: Clone + Hash + Eq,
+#[derive(Debug)]
+pub struct LinearPolynomial<K, V> {
+    v: HashMap<Option<K>, V>,
+}
+impl<K, V> Default for LinearPolynomial<K, V>
 {
-    v: HashMap<Option<K>, BigRational>,
+    fn default() -> Self {
+        Self { v : HashMap::default() }
+    }
 }
 
-impl<K> LinearPolynomial<K>
+impl<K, V> Clone for LinearPolynomial<K, V>
 where
-    K: Clone + Eq + Hash,
+    K: Clone,
+    V: Clone,
 {
-    pub fn new() -> Self {
-        LinearPolynomial { v: HashMap::new() }
+    fn clone(&self) -> Self {
+        LinearPolynomial { v: self.v.clone() }
     }
-    pub fn iter(&self) -> impl Iterator<Item = (&Option<K>, &BigRational)> + '_ {
+}
+impl<K, V> PartialEq for LinearPolynomial<K, V>
+where
+    K: Hash + Eq,
+    V: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.v == other.v
+    }
+}
+impl<K, V> Eq for LinearPolynomial<K, V>
+where
+    K: Hash + Eq,
+    V: Eq,
+{
+}
+
+impl<K, V> LinearPolynomial<K, V> {
+    pub fn iter(&self) -> impl Iterator<Item = (&Option<K>, &V)> + '_ {
         self.v.iter()
     }
-    pub fn into_iter(self) -> impl Iterator<Item = (Option<K>, BigRational)> {
+}
+impl<K, V> IntoIterator for LinearPolynomial<K, V> {
+    type Item = (Option<K>, V);
+    type IntoIter = IntoIter<Option<K>, V>;
+    fn into_iter(self) -> Self::IntoIter {
         self.v.into_iter()
     }
-    pub fn coefficient(&self, p: &Option<K>) -> BigRational {
-        self.v
-            .get(p)
-            .map(|c| c.clone())
-            .unwrap_or(BigRational::zero())
+}
+impl<K, V> From<V> for LinearPolynomial<K, V>
+where
+    K: Eq + Hash,
+{
+    fn from(c: V) -> Self {
+        LinearPolynomial {
+            v: HashMap::from([(None, c)]),
+        }
     }
-    pub fn constant(&self) -> BigRational {
+}
+impl<K, V> FromIterator<(Option<K>, V)> for LinearPolynomial<K, V>
+where
+    K: Eq + Hash,
+{
+    fn from_iter<I: IntoIterator<Item = (Option<K>, V)>>(iter: I) -> Self {
+        LinearPolynomial {
+            v: HashMap::from_iter(iter),
+        }
+    }
+}
+impl<K, V, const N: usize> From<[(Option<K>, V); N]> for LinearPolynomial<K, V>
+where
+    K: Eq + Hash,
+{
+    fn from(arr: [(Option<K>, V); N]) -> Self {
+        Self::from_iter(arr)
+    }
+}
+impl<K, V> LinearPolynomial<K, V>
+where
+    K: Eq + Hash,
+    V: Clone + Zero,
+{
+    pub fn coefficient(&self, p: &Option<K>) -> V {
+        self.v.get(p).cloned().unwrap_or_else(V::zero)
+    }
+    pub fn constant(&self) -> V {
         self.coefficient(&None)
     }
-    pub fn set_coefficient(&mut self, p: Option<K>, c: BigRational) {
-        if c.is_zero() {
-            self.v.remove(&p);
-        } else {
-            self.v.insert(p, c);
-        };
-    }
-    pub fn set_constant(&mut self, c: BigRational) {
-        self.set_coefficient(None, c)
-    }
-
-    pub fn to_constant(&self) -> Option<BigRational> {
-        if self.iter().find(|(p, _)| p.is_some()).is_none() {
+    pub fn to_constant(&self) -> Option<V> {
+        if !self.iter().any(|(p, _)| p.is_some()) {
             Some(self.constant())
         } else {
             None
         }
     }
 }
-impl<T> Zero for LinearPolynomial<T>
+impl<K, V> LinearPolynomial<K, V>
 where
-    T: Ord + Clone + Hash,
+    K: Hash + Eq,
+    V: Zero,
+{
+    pub fn set_coefficient(&mut self, p: Option<K>, c: V) {
+        if c.is_zero() {
+            self.v.remove(&p);
+        } else {
+            self.v.insert(p, c);
+        };
+    }
+    pub fn set_constant(&mut self, c: V) {
+        self.set_coefficient(None, c)
+    }
+}
+impl<K, V> LinearPolynomial<K, V>
+where
+    K: Clone + Eq + Hash,
+    V: Clone + Mul<Output = V> + Sum,
+{
+    pub fn eval(&self, map: &HashMap<K, V>) -> Option<V> {
+        self.iter()
+            .map(|(m, c)| {
+                if m.clone().is_none() {
+                    Some(c.clone())
+                } else {
+                    map.get(m.as_ref().unwrap()).map(|x| x.clone() * c.clone())
+                }
+            })
+            .sum()
+    }
+}
+
+impl<K, V> Zero for LinearPolynomial<K, V>
+where
+    K: Eq + Hash,
+    V: Clone + Zero,
 {
     fn zero() -> Self {
-        LinearPolynomial { v: HashMap::new() }
+        Self::default()
     }
     fn is_zero(&self) -> bool {
         self.v.is_empty()
@@ -69,76 +151,25 @@ where
         self.v.clear()
     }
 }
-
-impl<K> LinearPolynomial<K>
+impl<K, V> Add for LinearPolynomial<K, V>
 where
-    K: Clone + Eq + Hash,
-{
-    pub fn eval(&self, map: &HashMap<K, BigRational>) -> Option<BigRational> {
-        self.iter()
-            .map(|(m, c)| {
-                if m.clone().is_none() {
-                    Some(c.clone())
-                } else {
-                    map.get(&m.as_ref().unwrap()).map(|x| x.clone() * c.clone())
-                }
-            })
-            .sum()
-    }
-}
-impl<K> Default for LinearPolynomial<K>
-where
-    K: Clone + Eq + Hash,
-{
-    fn default() -> Self {
-        LinearPolynomial { v: HashMap::new() }
-    }
-}
-impl<K> From<BigRational> for LinearPolynomial<K>
-where
-    K: Clone + Eq + Hash,
-{
-    fn from(c: BigRational) -> Self {
-        LinearPolynomial {
-            v: HashMap::from([(None, c)]),
-        }
-    }
-}
-impl<K> FromIterator<(Option<K>, BigRational)> for LinearPolynomial<K>
-where
-    K: Clone + Eq + Hash,
-{
-    fn from_iter<I: IntoIterator<Item = (Option<K>, BigRational)>>(iter: I) -> Self {
-        LinearPolynomial {
-            v: HashMap::from_iter(iter),
-        }
-    }
-}
-impl<K, const N: usize> From<[(Option<K>, BigRational); N]> for LinearPolynomial<K>
-where
-    K: Clone + Eq + Hash,
-{
-    fn from(arr: [(Option<K>, BigRational); N]) -> Self {
-        Self::from_iter(arr)
-    }
-}
-
-impl<K> Add for LinearPolynomial<K>
-where
-    K: Clone + Eq + Hash,
+    K: Eq + Hash,
+    V: Clone + Zero,
 {
     type Output = Self;
     fn add(self, other: Self) -> Self {
         let mut result = self;
-        other.iter().for_each(|(p, c)| {
-            result.set_coefficient(p.clone(), result.coefficient(p) + c.clone());
+        other.into_iter().for_each(|(p, c)| {
+            let val = result.coefficient(&p) + c;
+            result.set_coefficient(p, val);
         });
         result
     }
 }
-impl<K> Sub for LinearPolynomial<K>
+impl<K, V> Sub for LinearPolynomial<K, V>
 where
     K: Clone + Eq + Hash,
+    V: Clone + Zero + Sub<Output = V>,
 {
     type Output = Self;
     fn sub(self, other: Self) -> Self {
@@ -149,39 +180,42 @@ where
         result
     }
 }
-impl<K> Neg for LinearPolynomial<K>
+impl<K, V> Neg for LinearPolynomial<K, V>
 where
     K: Clone + Eq + Hash,
+    V: Clone + Zero + Neg<Output = V>,
 {
     type Output = Self;
     fn neg(self) -> Self {
-        let mut result = LinearPolynomial::new();
+        let mut result = LinearPolynomial::default();
         self.iter().for_each(|(p, c)| {
             result.set_coefficient(p.clone(), -c.clone());
         });
         result
     }
 }
-impl<K> Mul<BigRational> for LinearPolynomial<K>
+impl<K, V> Mul<V> for LinearPolynomial<K, V>
 where
     K: Clone + Eq + Hash,
+    V: Clone + Zero + Mul<Output = V>,
 {
     type Output = Self;
-    fn mul(self, other: BigRational) -> Self {
-        let mut result = LinearPolynomial::new();
+    fn mul(self, other: V) -> Self {
+        let mut result = LinearPolynomial::default();
         self.iter().for_each(|(p, c)| {
             result.set_coefficient(p.clone(), c.clone() * other.clone());
         });
         result
     }
 }
-impl<K> Div<BigRational> for LinearPolynomial<K>
+impl<K, V> Div<V> for LinearPolynomial<K, V>
 where
     K: Clone + Eq + Hash,
+    V: Clone + Zero + Div<Output = V>,
 {
     type Output = Self;
-    fn div(self, other: BigRational) -> Self {
-        let mut result = LinearPolynomial::new();
+    fn div(self, other: V) -> Self {
+        let mut result = LinearPolynomial::default();
         self.iter().for_each(|(p, c)| {
             result.set_coefficient(p.clone(), c.clone() / other.clone());
         });
@@ -189,16 +223,17 @@ where
     }
 }
 
-impl<K> LinearPolynomial<K>
+impl<K, V> LinearPolynomial<K, V>
 where
     K: Clone + Eq + Hash,
+    V: Clone + Zero + Mul<Output = V> + Div<Output = V>,
 {
     // x -> f
     pub fn composite(self, x: &Option<K>, f: &Self) -> Self {
         let coef = self.coefficient(x);
 
         let mut result = self;
-        result.set_coefficient(x.clone(), BigRational::zero());
+        result.set_coefficient(x.clone(), V::zero());
         f.v.iter().for_each(|(y, c)| {
             result.set_coefficient(y.clone(), result.coefficient(y) + coef.clone() * c.clone());
         });

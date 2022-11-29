@@ -3,13 +3,12 @@
 use std::ops::{Add, Deref, Mul, Sub};
 use std::rc::Rc;
 
-use num::{BigInt, Zero};
+use num::{BigInt, BigRational, Zero};
 
 use crate::constant::Type;
 use crate::polynomial::linear_polynomial::LinearPolynomial;
 use crate::polynomial::polynomial::Polynomial;
 use crate::variable::Variable;
-
 
 #[derive(Clone, Debug)]
 pub struct Function<'e>(Rc<FunctionData<'e>>);
@@ -46,12 +45,12 @@ pub enum FunctionData<'e> {
     IntIsNotNeg {
         // p >= 0
         // note: evaluated p isn't integer => undefined
-        p: LinearPolynomial<Variable<'e>>,
+        p: LinearPolynomial<Variable<'e>, BigRational>,
     },
     IntIsDivisor {
         // l % r == 0
         // note: evaluated l isn't integer => undefined
-        l: LinearPolynomial<Variable<'e>>,
+        l: LinearPolynomial<Variable<'e>, BigRational>,
         r: BigInt,
     },
     // flow
@@ -114,10 +113,10 @@ impl<'e> Function<'e> {
     pub fn new_polynomial_as_int(p: Polynomial<Variable<'e>>) -> Self {
         Rc::new(FunctionData::PolynomialAsInt { p }).into()
     }
-    pub fn new_int_is_not_neg(p: LinearPolynomial<Variable<'e>>) -> Self {
+    pub fn new_int_is_not_neg(p: LinearPolynomial<Variable<'e>, BigRational>) -> Self {
         Rc::new(FunctionData::IntIsNotNeg { p }).into()
     }
-    pub fn new_int_is_divisor(l: LinearPolynomial<Variable<'e>>, r: BigInt) -> Self {
+    pub fn new_int_is_divisor(l: LinearPolynomial<Variable<'e>, BigRational>, r: BigInt) -> Self {
         assert_ne!(r, BigInt::zero());
         Rc::new(FunctionData::IntIsDivisor { l, r }).into()
     }

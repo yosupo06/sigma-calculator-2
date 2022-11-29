@@ -75,7 +75,7 @@ impl Expr {
         &self,
         gen: &'e VariableManager,
         vars: &HashMap<String, Variable<'e>>,
-    ) -> Option<LinearPolynomial<Variable<'e>>> {
+    ) -> Option<LinearPolynomial<Variable<'e>, BigRational>> {
         match self {
             Self::Int { v } => Some(LinearPolynomial::from(BigRational::from(v.clone()))),
             Self::Variable { name } => {
