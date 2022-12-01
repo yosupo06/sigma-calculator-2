@@ -25,7 +25,7 @@ where
 impl<T: Ord + Clone + Hash> Polynomial<T> {
     pub fn to_constant(&self) -> Option<BigRational> {
         if self.iter().find(|(p, _)| p.degree() >= 1).is_none() {
-            Some(self.coefficient(&Monomial::new()))
+            Some(self.coefficient(&Monomial::default()))
         } else {
             None
         }
@@ -83,7 +83,7 @@ impl<T: Ord + Clone + Hash> From<BigRational> for Polynomial<T> {
             zero()
         } else {
             Polynomial {
-                v: HashMap::from([(Monomial::new(), item)]),
+                v: HashMap::from([(Monomial::default(), item)]),
             }
         }
     }
@@ -118,7 +118,7 @@ impl<T: Ord + Clone + Hash> From<LinearPolynomial<T, BigRational>> for Polynomia
             if let Some(v) = v {
                 (Monomial::from(v), c)
             } else {
-                (Monomial::new(), c)
+                (Monomial::default(), c)
             }
         }))
     }
@@ -253,7 +253,7 @@ impl<T: Ord + Clone + Hash + Display> Display for Polynomial<T> {
                 .v
                 .iter()
                 .map(|(p, c)| {
-                    if p.v.is_empty() {
+                    if p.is_one() {
                         format!("{}", c)
                     } else if c == &BigRational::one() {
                         format!("{}", p)
