@@ -41,20 +41,14 @@ pub fn quick_eval_constant(f: &Function) -> Option<Constant> {
     }
 }
 
-pub fn eval<'e>(f: &Function<'e>, vals: &HashMap<Variable<'e>, Constant>) -> Constant {
+pub fn eval<'e>(f: &Function<'e>, vals: &HashMap<Variable<'e>, BigInt>) -> Constant {
     match f.data() {
         FunctionData::PolynomialAsInt { p } => {
             let x: BigRational = p
                 .iter()
                 .map(|(m, c)| -> BigRational {
                     m.iter()
-                        .map(|(v, r)| {
-                            if let Constant::Integer(x) = vals.get(v).unwrap() {
-                                BigRational::from(x.pow(*r as u32))
-                            } else {
-                                unreachable!();
-                            }
-                        })
+                        .map(|(v, r)| BigRational::from(vals.get(v).unwrap().pow(*r as u32)))
                         .fold(c.clone(), |acc, x| acc * x)
                 })
                 .sum();
@@ -96,7 +90,7 @@ pub fn eval<'e>(f: &Function<'e>, vals: &HashMap<Variable<'e>, Constant>) -> Con
                 let mut j = l;
                 let mut vals = vals.clone();
                 while j <= r {
-                    vals.insert(i.clone(), Constant::Integer(j.clone()));
+                    vals.insert(i.clone(), j.clone());
                     sum = (sum + eval(f, &vals)).unwrap();
                     j += BigInt::one();
                 }
@@ -106,13 +100,10 @@ pub fn eval<'e>(f: &Function<'e>, vals: &HashMap<Variable<'e>, Constant>) -> Con
             }
         }
         FunctionData::IntIsNotNeg { p } => {
-            let v = p.eval(&HashMap::from_iter(vals.iter().map(|(v, c)| {
-                if let Constant::Integer(x) = c {
-                    (v.clone(), BigRational::from(x.clone()))
-                } else {
-                    unreachable!()
-                }
-            })));
+            let v = p.eval(&HashMap::from_iter(
+                vals.iter()
+                    .map(|(v, c)| (v.clone(), BigRational::from(c.clone()))),
+            ));
             if let Some(v) = v {
                 Constant::Bool(!v.is_negative())
             } else {
@@ -120,13 +111,10 @@ pub fn eval<'e>(f: &Function<'e>, vals: &HashMap<Variable<'e>, Constant>) -> Con
             }
         }
         FunctionData::IntIsDivisor { l, r } => {
-            let v = l.eval(&HashMap::from_iter(vals.iter().map(|(v, c)| {
-                if let Constant::Integer(x) = c {
-                    (v.clone(), BigRational::from(x.clone()))
-                } else {
-                    unreachable!()
-                }
-            })));
+            let v = l.eval(&HashMap::from_iter(
+                vals.iter()
+                    .map(|(v, c)| (v.clone(), BigRational::from(c.clone()))),
+            ));
             if let Some(v) = v {
                 Constant::Bool((v % r).is_zero())
             } else {
@@ -140,7 +128,7 @@ pub fn eval<'e>(f: &Function<'e>, vals: &HashMap<Variable<'e>, Constant>) -> Con
     }
 }
 
-pub fn eval_function<'e>(f: &Function<'e>, vals: &Vec<Constant>) -> Constant {
+pub fn eval_function<'e>(f: &Function<'e>, vals: &Vec<BigInt>) -> Constant {
     if let FunctionData::Declare {
         name: _,
         args,

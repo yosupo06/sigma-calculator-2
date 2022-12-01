@@ -69,12 +69,12 @@ mod tests {
     use crate::default_optimize;
     use num::BigInt;
 
-    fn test_eval(f: &Function, vals: &Vec<Constant>, expect: &Constant) {
+    fn test_eval(f: &Function, vals: &Vec<BigInt>, expect: &Constant) {
         let val = eval_function(f, vals);
         assert_eq!(&val, expect);
     }
 
-    fn test_function(s: &str, vals: Vec<Constant>, expect: Constant) {
+    fn test_function(s: &str, vals: Vec<BigInt>, expect: Constant) {
         let var_manager = VariableManager::new();
         let f = parse(s, &var_manager);
         assert!(f.is_some());
@@ -85,7 +85,7 @@ mod tests {
         test_eval(&f, &vals, &expect);
     }
 
-    fn test_opt_function(s: &str, vals: Vec<Constant>, expect: Constant) {
+    fn test_opt_function(s: &str, vals: Vec<BigInt>, expect: Constant) {
         let var_manager = VariableManager::new();
         let f = parse(s, &var_manager);
         assert!(f.is_some());
@@ -95,7 +95,7 @@ mod tests {
         test_eval(&f, &vals, &expect);
     }
 
-    fn test_compare_opt(s: &str, vals: Vec<Constant>) {
+    fn test_compare_opt(s: &str, vals: Vec<BigInt>) {
         let var_manager = VariableManager::new();
         let f = parse(s, &var_manager);
         assert!(f.is_some());
@@ -112,12 +112,12 @@ mod tests {
         test_function("f()=123", vec![], Constant::Integer(123.into()));
         test_function(
             "f(n)=$(i=0..n)i",
-            vec![Constant::Integer(100.into())],
+            vec![100.into()],
             Constant::Integer(5050.into()),
         );
         test_function(
             "f(A, B)=$(i=A..B)[2|i]1",
-            vec![Constant::Integer(2.into()), Constant::Integer(99.into())],
+            vec![2.into(), 99.into()],
             Constant::Integer(49.into()),
         );
     }
@@ -126,10 +126,7 @@ mod tests {
     fn stress_even_count() {
         for a in 0..10 {
             for b in 0..10 {
-                test_compare_opt(
-                    "f(A, B)=$(i=A..B)[2|i]1",
-                    vec![Constant::Integer(a.into()), Constant::Integer(b.into())],
-                );
+                test_compare_opt("f(A, B)=$(i=A..B)[2|i]1", vec![a.into(), b.into()]);
             }
         }
     }
@@ -140,11 +137,7 @@ mod tests {
                 for c in 0..10 {
                     test_compare_opt(
                         "f(A, B, C)=$(i=A..B)[2*C-i>=0][C-2*i>=0]1",
-                        vec![
-                            Constant::Integer(a.into()),
-                            Constant::Integer(b.into()),
-                            Constant::Integer(c.into()),
-                        ],
+                        vec![a.into(), b.into(), c.into()],
                     );
                 }
             }
@@ -155,10 +148,7 @@ mod tests {
     fn stress2() {
         for a in 0..10 {
             for b in 0..10 {
-                test_compare_opt(
-                    "f(A, B)=$(i=2*A..3*B)1",
-                    vec![Constant::Integer(a.into()), Constant::Integer(b.into())],
-                );
+                test_compare_opt("f(A, B)=$(i=2*A..3*B)1", vec![a.into(), b.into()]);
             }
         }
     }
@@ -170,11 +160,7 @@ mod tests {
                 for c in 0..10 {
                     test_compare_opt(
                         "f(A, B, C)=$(i=A..B)[2*C-3*i>=0][4*i-5*C>=0]1",
-                        vec![
-                            Constant::Integer(a.into()),
-                            Constant::Integer(b.into()),
-                            Constant::Integer(c.into()),
-                        ],
+                        vec![a.into(), b.into(), c.into()],
                     );
                 }
             }
@@ -184,17 +170,7 @@ mod tests {
     fn test_abc269_f() {
         let s = "f(M, A, B, C, D)=$(i=A..B)$(j=C..D)[2|i+j]((i-1)*M+j)";
         let test = |m: BigInt, a: BigInt, b: BigInt, c: BigInt, d: BigInt, ans: BigInt| {
-            test_opt_function(
-                s,
-                vec![
-                    Constant::Integer(m),
-                    Constant::Integer(a),
-                    Constant::Integer(b),
-                    Constant::Integer(c),
-                    Constant::Integer(d),
-                ],
-                Constant::Integer(ans),
-            );
+            test_opt_function(s, vec![m, a, b, c, d], Constant::Integer(ans));
         };
         test(
             999999999.into(),
