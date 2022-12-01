@@ -11,10 +11,11 @@ use num::Zero;
 pub struct LinearPolynomial<K, V> {
     v: HashMap<Option<K>, V>,
 }
-impl<K, V> Default for LinearPolynomial<K, V>
-{
+impl<K, V> Default for LinearPolynomial<K, V> {
     fn default() -> Self {
-        Self { v : HashMap::default() }
+        Self {
+            v: HashMap::default(),
+        }
     }
 }
 
