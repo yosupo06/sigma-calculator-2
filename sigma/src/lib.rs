@@ -33,9 +33,7 @@ fn default_optimize(f: Function) -> Function {
             Box::new(LoopIfSumOptimizer {}),
         ],
     };
-    let optimizer = FullyOptimizer {
-        optimizer: optimizer,
-    };
+    let optimizer = FullyOptimizer { optimizer };
 
     optimizer.optimize(&f).unwrap_or(f)
 }
