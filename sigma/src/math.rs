@@ -3,7 +3,7 @@ use num::{
     BigInt, BigRational, Integer, One, Signed, Zero,
 };
 
-use crate::{polynomial::linear_polynomial::LinearPolynomial, variable::Variable};
+use crate::{polynomials::linear_polynomial::LinearPolynomial, variable::Variable};
 
 pub fn mod_inverse(a: BigInt, b: BigInt) -> BigInt {
     assert_eq!(BigInt::one(), gcd(a.clone(), b.clone()));

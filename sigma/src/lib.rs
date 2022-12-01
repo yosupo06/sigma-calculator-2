@@ -18,7 +18,7 @@ pub mod function;
 pub mod math;
 pub mod optimizers;
 pub mod parser;
-pub mod polynomial;
+pub mod polynomials;
 pub mod printer;
 pub mod variable;
 

@@ -10,7 +10,7 @@ use num::{BigInt, BigRational, One};
 use crate::{
     constant::Type,
     function::Function,
-    polynomial::{linear_polynomial::LinearPolynomial, polynomial::Polynomial},
+    polynomials::{linear_polynomial::LinearPolynomial, polynomial::Polynomial},
     variable::{Variable, VariableManager},
 };
 

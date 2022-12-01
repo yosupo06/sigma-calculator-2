@@ -3,7 +3,7 @@ use num::{integer::gcd, BigInt, BigRational, One, Signed, ToPrimitive, Zero};
 use crate::{
     function::{Function, FunctionData},
     math::mod_inverse,
-    polynomial::{linear_polynomial::LinearPolynomial, polynomial::Polynomial},
+    polynomials::{linear_polynomial::LinearPolynomial, polynomial::Polynomial},
     variable::Variable,
 };
 
@@ -103,7 +103,7 @@ fn to_linear_condition<'e>(f: &Function<'e>) -> Option<LinearCondition<'e>> {
 fn sum_linear_is_not_neg_pol<'e>(
     x: &Variable<'e>,
     conds: &[LinearIsNotNeg<'e>],
-    pol: &Polynomial<Variable<'e>>,
+    pol: &Polynomial<Variable<'e>, BigRational>,
 ) -> Option<Function<'e>> {
     let pol = pol.discrete_integral(x);
 
@@ -239,7 +239,7 @@ fn sum_linear_is_not_neg_pol<'e>(
 fn sum_polynomial_by_x<'e>(
     x: &Variable<'e>,
     conds: &Vec<LinearCondition<'e>>,
-    pol: &Polynomial<Variable<'e>>,
+    pol: &Polynomial<Variable<'e>, BigRational>,
 ) -> Option<Function<'e>> {
     let mut pol = pol.clone();
     let mut unrelated_conds: Vec<LinearCondition> = vec![];
@@ -327,7 +327,12 @@ fn sum_polynomial_by_x<'e>(
 
 fn decompose_sum_if_polynomial<'e>(
     f: &Function<'e>,
-) -> Option<Vec<(Vec<LinearCondition<'e>>, Polynomial<Variable<'e>>)>> {
+) -> Option<
+    Vec<(
+        Vec<LinearCondition<'e>>,
+        Polynomial<Variable<'e>, BigRational>,
+    )>,
+> {
     match f.data() {
         FunctionData::PolynomialAsInt { p } => Some(vec![(vec![], p.clone())]),
         FunctionData::Add { l, r, .. } => {

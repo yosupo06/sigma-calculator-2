@@ -2,7 +2,7 @@ use num::{integer::lcm, BigRational, One, Zero};
 
 use crate::{
     function::{Function, FunctionData},
-    polynomial::{linear_polynomial::LinearPolynomial, polynomial::Polynomial},
+    polynomials::{linear_polynomial::LinearPolynomial, polynomial::Polynomial},
     variable::Variable,
 };
 /*
@@ -72,7 +72,7 @@ use crate::{
     }
 */
 
-fn print_polynomial<'e>(p: &Polynomial<Variable<'e>>) -> String {
+fn print_polynomial<'e>(p: &Polynomial<Variable<'e>, BigRational>) -> String {
     if p.is_zero() {
         return "0".to_string();
     }

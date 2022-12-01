@@ -4,7 +4,7 @@ use crate::{
     constant::{Constant, Type},
     eval::quick_eval_constant,
     function::{Function, FunctionData},
-    polynomial::linear_polynomial::LinearPolynomial,
+    polynomials::linear_polynomial::LinearPolynomial,
 };
 
 use self::replace::replace_all;

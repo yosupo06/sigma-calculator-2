@@ -6,8 +6,8 @@ use std::rc::Rc;
 use num::{BigInt, BigRational, Zero};
 
 use crate::constant::Type;
-use crate::polynomial::linear_polynomial::LinearPolynomial;
-use crate::polynomial::polynomial::Polynomial;
+use crate::polynomials::linear_polynomial::LinearPolynomial;
+use crate::polynomials::polynomial::Polynomial;
 use crate::variable::Variable;
 
 #[derive(Clone, Debug)]
@@ -21,7 +21,7 @@ pub enum FunctionData<'e> {
     },
     PolynomialAsInt {
         // evaluated p isn't integer => undefined
-        p: Polynomial<Variable<'e>>,
+        p: Polynomial<Variable<'e>, BigRational>,
     },
     // single op
     Neg {
@@ -110,7 +110,7 @@ impl<'e> Function<'e> {
     pub fn new_bool(f: bool) -> Self {
         Rc::new(FunctionData::Bool { f }).into()
     }
-    pub fn new_polynomial_as_int(p: Polynomial<Variable<'e>>) -> Self {
+    pub fn new_polynomial_as_int(p: Polynomial<Variable<'e>, BigRational>) -> Self {
         Rc::new(FunctionData::PolynomialAsInt { p }).into()
     }
     pub fn new_int_is_not_neg(p: LinearPolynomial<Variable<'e>, BigRational>) -> Self {

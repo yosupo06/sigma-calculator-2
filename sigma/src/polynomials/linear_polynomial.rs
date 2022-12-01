@@ -248,7 +248,7 @@ mod tests {
 
     use num::{BigInt, BigRational, FromPrimitive};
 
-    use crate::polynomial::linear_polynomial::LinearPolynomial;
+    use crate::polynomials::linear_polynomial::LinearPolynomial;
 
     #[test]
     fn from_iter() {
