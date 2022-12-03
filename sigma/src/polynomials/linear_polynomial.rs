@@ -227,14 +227,14 @@ where
 impl<K, V> LinearPolynomial<K, V>
 where
     K: Clone + Eq + Hash,
-    V: Clone + Zero + Mul<Output = V> + Div<Output = V>,
+    V: Clone + Zero + Mul<Output = V>,
 {
     // x -> f
-    pub fn composite(self, x: &Option<K>, f: &Self) -> Self {
-        let coef = self.coefficient(x);
+    pub fn composite(self, x: &K, f: &Self) -> Self {
+        let coef = self.coefficient(&Some(x.clone()));
 
         let mut result = self;
-        result.set_coefficient(x.clone(), V::zero());
+        result.set_coefficient(Some(x.clone()), V::zero());
         f.v.iter().for_each(|(y, c)| {
             result.set_coefficient(y.clone(), result.coefficient(y) + coef.clone() * c.clone());
         });
@@ -280,7 +280,7 @@ mod tests {
                 (Some(2), BigRational::from(BigInt::from(12 as i32))),
                 (None, BigRational::from(BigInt::from(15 as i32)))
             ]),
-            HashMap::from_iter(a.composite(&Some(2), &b).into_iter())
+            HashMap::from_iter(a.composite(&2, &b).into_iter())
         );
     }
 

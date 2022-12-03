@@ -87,11 +87,11 @@ impl<'e> Optimizer<'e> for ObviousIfOptimizer {
         None
     }
 }
-
+/*
 pub struct SimplifyConditionOptimizer {}
 impl<'e> Optimizer<'e> for SimplifyConditionOptimizer {
     fn optimize(&self, f: &Function<'e>) -> Option<Function<'e>> {
-        if let FunctionData::IntIsDivisor { l, r } = f.data() {
+        if let FunctionData::IsDivisor { l, r } = f.data() {
             if r.is_one() {
                 return Some(Function::new_bool(true));
             }
@@ -107,24 +107,24 @@ impl<'e> Optimizer<'e> for SimplifyConditionOptimizer {
             }));
 
             if l != &p2 {
-                return Some(Function::new_int_is_divisor(p2, r.clone()));
+                return Some(Function::new_is_divisor(p2, r.clone()));
             }
 
             let g = l.numer_gcd();
             if g != BigInt::one() {
-                return Some(Function::new_int_is_divisor(
+                return Some(Function::new_is_divisor(
                     (l.clone() / BigRational::from(g.clone())).into(),
                     r.clone() / gcd(r.clone(), g),
                 ));
             }
         }
-        if let FunctionData::IntIsNotNeg { p } = f.data() {
+        if let FunctionData::IsNotNeg { p } = f.data() {
             if p.is_zero() {
                 return Some(Function::new_bool(true));
             }
             let g = p.numer_gcd();
             if g != BigInt::one() {
-                return Some(Function::new_int_is_not_neg(
+                return Some(Function::new_is_not_neg(
                     p.clone() / BigRational::from(g.clone()),
                 ));
             }
@@ -132,7 +132,7 @@ impl<'e> Optimizer<'e> for SimplifyConditionOptimizer {
         None
     }
 }
-
+*/
 pub struct PolynomialOptimizer {}
 impl<'e> Optimizer<'e> for PolynomialOptimizer {
     fn optimize(&self, f: &Function<'e>) -> Option<Function<'e>> {

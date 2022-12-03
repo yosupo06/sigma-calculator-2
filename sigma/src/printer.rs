@@ -1,4 +1,4 @@
-use num::{integer::lcm, BigRational, One, Zero};
+use num::{integer::lcm, BigRational, One, Zero, BigInt};
 
 use crate::{
     function::{Function, FunctionData},
@@ -107,20 +107,20 @@ fn print_polynomial<'e>(p: &Polynomial<Variable<'e>, BigRational>) -> String {
     }
 }
 
-fn print_linear_polynomial<'e>(p: &LinearPolynomial<Variable<'e>, BigRational>) -> String {
+fn print_linear_polynomial<'e>(p: &LinearPolynomial<Variable<'e>, BigInt>) -> String {
     if p.is_zero() {
         return "0".to_string();
     }
     let g = p
         .iter()
-        .map(|(_, c)| c.denom().clone())
+        .map(|(_, c)| c.clone())
         .reduce(|x, y| lcm(x, y))
         .unwrap();
 
     let result = p
         .iter()
         .map(|(v, c)| {
-            let coef = c.numer() * g.clone() / c.denom();
+            let coef = c * g.clone();
             if let Some(v) = v {
                 format!("{}*{}", coef, v.name())
             } else {
@@ -154,10 +154,10 @@ fn to_cpp_source_lines<'e>(f: &Function<'e>) -> Vec<String> {
             v.push("}".to_string());
             v
         }
-        FunctionData::IntIsDivisor { l, r } => {
+        FunctionData::IsDivisor { l, r } => {
             vec![format!("({}) % {} == 0", print_linear_polynomial(l), r)]
         }
-        FunctionData::IntIsNotNeg { p } => {
+        FunctionData::IsNotNeg { p } => {
             vec![format!("{} >= 0", print_linear_polynomial(p))]
         }
         _ => todo!(),

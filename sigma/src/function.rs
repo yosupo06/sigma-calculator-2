@@ -42,15 +42,13 @@ pub enum FunctionData<'e> {
         r: Function<'e>,
     },
     // condition
-    IntIsNotNeg {
+    IsNotNeg {
         // p >= 0
-        // note: evaluated p isn't integer => undefined
-        p: LinearPolynomial<Variable<'e>, BigRational>,
+        p: LinearPolynomial<Variable<'e>, BigInt>,
     },
-    IntIsDivisor {
+    IsDivisor {
         // l % r == 0
-        // note: evaluated l isn't integer => undefined
-        l: LinearPolynomial<Variable<'e>, BigRational>,
+        l: LinearPolynomial<Variable<'e>, BigInt>,
         r: BigInt,
     },
     // flow
@@ -94,8 +92,8 @@ impl<'e> Function<'e> {
             FunctionData::Not { .. } => &Type::Bool,
             FunctionData::Add { t, .. } => t,
             FunctionData::Mul { t, .. } => t,
-            FunctionData::IntIsNotNeg { .. } => &Type::Bool,
-            FunctionData::IntIsDivisor { .. } => &Type::Bool,
+            FunctionData::IsNotNeg { .. } => &Type::Bool,
+            FunctionData::IsDivisor { .. } => &Type::Bool,
             FunctionData::If { t, .. } => t,
             FunctionData::LoopSum { t, .. } => t,
             FunctionData::Declare { .. } => unreachable!(),
@@ -113,12 +111,12 @@ impl<'e> Function<'e> {
     pub fn new_polynomial_as_int(p: Polynomial<Variable<'e>, BigRational>) -> Self {
         Rc::new(FunctionData::PolynomialAsInt { p }).into()
     }
-    pub fn new_int_is_not_neg(p: LinearPolynomial<Variable<'e>, BigRational>) -> Self {
-        Rc::new(FunctionData::IntIsNotNeg { p }).into()
+    pub fn new_is_not_neg(p: LinearPolynomial<Variable<'e>, BigInt>) -> Self {
+        Rc::new(FunctionData::IsNotNeg { p }).into()
     }
-    pub fn new_int_is_divisor(l: LinearPolynomial<Variable<'e>, BigRational>, r: BigInt) -> Self {
+    pub fn new_is_divisor(l: LinearPolynomial<Variable<'e>, BigInt>, r: BigInt) -> Self {
         assert_ne!(r, BigInt::zero());
-        Rc::new(FunctionData::IntIsDivisor { l, r }).into()
+        Rc::new(FunctionData::IsDivisor { l, r }).into()
     }
     pub fn new_add(l: Self, r: Self) -> Self {
         assert_eq!(l.return_type(), r.return_type());
@@ -214,11 +212,11 @@ impl<'e> Function<'e> {
                 v.append(&mut shift(f.to_source_lines()));
                 v
             }
-            FunctionData::IntIsDivisor { l, r } => {
-                vec![format!("({} % {} == 0)", Polynomial::from(l.clone()), r,)]
+            FunctionData::IsDivisor { l, r } => {
+                vec![format!("({} % {} == 0)", Polynomial::<Variable<'e>, BigInt>::from(l.clone()), r,)]
             }
-            FunctionData::IntIsNotNeg { p } => {
-                vec![format!("({} >= 0)", Polynomial::from(p.clone()))]
+            FunctionData::IsNotNeg { p } => {
+                vec![format!("({} >= 0)", Polynomial::<Variable<'e>, BigInt>::from(p.clone()))]
             }
             FunctionData::Neg { v } => vec![format!("-({})", v.to_source_s_line())],
             FunctionData::Not { v } => vec![format!("!({})", v.to_source_s_line())],

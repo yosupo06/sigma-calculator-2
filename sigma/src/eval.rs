@@ -30,10 +30,10 @@ pub fn quick_eval_constant(f: &Function) -> Option<Constant> {
                 None
             }
         }
-        FunctionData::IntIsNotNeg { p } => {
+        FunctionData::IsNotNeg { p } => {
             p.to_constant().map(|x| Constant::Bool(!x.is_negative()))
         }
-        FunctionData::IntIsDivisor { l, r } => {
+        FunctionData::IsDivisor { l, r } => {
             l.to_constant().map(|x| Constant::Bool((x % r).is_zero()))
         }
 
@@ -99,27 +99,11 @@ pub fn eval<'e>(f: &Function<'e>, vals: &HashMap<Variable<'e>, BigInt>) -> Const
                 todo!()
             }
         }
-        FunctionData::IntIsNotNeg { p } => {
-            let v = p.eval(&HashMap::from_iter(
-                vals.iter()
-                    .map(|(v, c)| (v.clone(), BigRational::from(c.clone()))),
-            ));
-            if let Some(v) = v {
-                Constant::Bool(!v.is_negative())
-            } else {
-                unreachable!();
-            }
+        FunctionData::IsNotNeg { p } => {
+            Constant::Bool(!p.eval(vals).unwrap().is_negative())
         }
-        FunctionData::IntIsDivisor { l, r } => {
-            let v = l.eval(&HashMap::from_iter(
-                vals.iter()
-                    .map(|(v, c)| (v.clone(), BigRational::from(c.clone()))),
-            ));
-            if let Some(v) = v {
-                Constant::Bool((v % r).is_zero())
-            } else {
-                unreachable!();
-            }
+        FunctionData::IsDivisor { l, r } => {
+            Constant::Bool((l.eval(vals).unwrap() % r).is_zero())
         }
         _ => {
             println!("error: {}", f.to_source());

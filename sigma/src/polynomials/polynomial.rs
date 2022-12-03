@@ -9,7 +9,7 @@ use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 use num::rational::BigRational;
 use num::traits::Zero;
 use num::traits::{One, Pow};
-use num::zero;
+use num::{zero, BigInt};
 
 use crate::math::faulhaber;
 
@@ -336,9 +336,10 @@ where
     }
 }
 
-impl<K> Display for Polynomial<K, BigRational>
+impl<K, V> Display for Polynomial<K, V>
 where
     K: Ord + Clone + Hash + Display,
+    V: Eq + One + Display,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         if self.v.is_empty() {
@@ -351,7 +352,7 @@ where
                 .map(|(p, c)| {
                     if p.is_one() {
                         format!("{}", c)
-                    } else if c == &BigRational::one() {
+                    } else if c.is_one() {
                         format!("{}", p)
                     } else {
                         format!("({}) {}", c, p)

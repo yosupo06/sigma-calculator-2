@@ -2,7 +2,7 @@ use function::Function;
 use optimizers::{
     loop_optimizer::LoopIfSumOptimizer, ChainedOptimizer, ConstantOptimizer, FullyOptimizer,
     ObviousBinOpOptimizer, ObviousIfOptimizer, Optimizer, PolynomialOptimizer,
-    SimplifyConditionOptimizer,
+//    SimplifyConditionOptimizer,
 };
 use parser::parse;
 use printer::cpp_print;
@@ -28,7 +28,7 @@ fn default_optimize(f: Function) -> Function {
             Box::new(ConstantOptimizer {}),
             Box::new(ObviousBinOpOptimizer {}),
             Box::new(ObviousIfOptimizer {}),
-            Box::new(SimplifyConditionOptimizer {}),
+//            Box::new(SimplifyConditionOptimizer {}),
             Box::new(PolynomialOptimizer {}),
             Box::new(LoopIfSumOptimizer {}),
         ],

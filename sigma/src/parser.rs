@@ -75,14 +75,14 @@ impl Expr {
         &self,
         gen: &'e VariableManager,
         vars: &HashMap<String, Variable<'e>>,
-    ) -> Option<LinearPolynomial<Variable<'e>, BigRational>> {
+    ) -> Option<LinearPolynomial<Variable<'e>, BigInt>> {
         match self {
-            Self::Int { v } => Some(LinearPolynomial::from(BigRational::from(v.clone()))),
+            Self::Int { v } => Some(LinearPolynomial::from(BigInt::from(v.clone()))),
             Self::Variable { name } => {
                 if let Some(v) = vars.get(name) {
                     Some(LinearPolynomial::from([(
                         Some(v.clone()),
-                        BigRational::one(),
+                        BigInt::one(),
                     )]))
                 } else {
                     None
@@ -187,7 +187,7 @@ impl Expr {
                     l.to_linear_polynomial(gen, vars),
                     r.to_linear_polynomial(gen, vars),
                 ) {
-                    Some(Function::new_int_is_not_neg(r - l))
+                    Some(Function::new_is_not_neg(r - l))
                 } else {
                     None
                 }
@@ -195,7 +195,7 @@ impl Expr {
             Self::IsDivisor { l, r } => {
                 if let (Some(l), Some(r)) = (l.to_int(gen, vars), r.to_linear_polynomial(gen, vars))
                 {
-                    Some(Function::new_int_is_divisor(r, l))
+                    Some(Function::new_is_divisor(r, l))
                 } else {
                     None
                 }
