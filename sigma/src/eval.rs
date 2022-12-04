@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use num::{BigInt, BigRational, One, Signed, Zero};
 
 use crate::constant::Constant;
-use crate::function::{Function, FunctionData};
+use crate::function::{Function, FunctionData, FunctionDecrare};
 
 use crate::variable::Variable;
 
@@ -112,7 +112,15 @@ pub fn eval<'e>(f: &Function<'e>, vals: &HashMap<Variable<'e>, BigInt>) -> Const
     }
 }
 
-pub fn eval_function<'e>(f: &Function<'e>, vals: &Vec<BigInt>) -> Constant {
+pub fn eval_function<'e>(f: &FunctionDecrare<'e>, vals: &Vec<BigInt>) -> Constant {
+    assert_eq!(vals.len(), f.args.len());
+    let map = HashMap::from_iter(
+        f.args.iter()
+            .zip(vals.iter())
+            .map(|(x, y)| (x.clone(), y.clone())),
+    );
+    eval(&f.body, &map)
+/*
     if let FunctionData::Declare {
         name: _,
         args,
@@ -128,5 +136,5 @@ pub fn eval_function<'e>(f: &Function<'e>, vals: &Vec<BigInt>) -> Constant {
         eval(body, &map)
     } else {
         panic!();
-    }
+    }*/
 }

@@ -65,8 +65,8 @@ where
         FunctionData::IsNotNeg { p: _ } => None,
         FunctionData::IsDivisor { l: _, r: _ } => None,
         FunctionData::Neg { v } => replace_all_internal(v, rule).map(Function::new_neg),
-        FunctionData::Declare { name, args, body } => replace_all_internal(body, rule)
-            .map(|body| Function::new_declare(name.clone(), args.clone(), body)),
+/*        FunctionData::Declare { name, args, body } => replace_all_internal(body, rule)
+            .map(|body| Function::new_declare(name.clone(), args.clone(), body)),*/
         _ => {
             todo!()
         }

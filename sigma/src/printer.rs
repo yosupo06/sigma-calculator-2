@@ -1,7 +1,7 @@
 use num::{integer::lcm, BigRational, One, Zero, BigInt};
 
 use crate::{
-    function::{Function, FunctionData},
+    function::{Function, FunctionData, FunctionDecrare},
     polynomials::{linear_polynomial::LinearPolynomial, polynomial::Polynomial},
     variable::Variable,
 };
@@ -167,23 +167,19 @@ fn to_cpp_source<'e>(f: &Function<'e>) -> String {
     to_cpp_source_lines(f).join("\n")
 }
 
-pub fn cpp_print<'e>(f: &Function<'e>) -> String {
-    if let FunctionData::Declare { name, args, body } = f.data() {
-        let mut s: String = "".to_string();
-        s += &format!(
-            "Int {}({}) {{\n",
-            name,
-            args.iter()
-                .map(|v| format!("Int {}", v.name()))
-                .collect::<Vec<String>>()
-                .join(", ")
-        );
-        s += &"Int sum = Int(0);\n";
-        s += &to_cpp_source(body);
-        s += &"\nreturn sum;\n";
-        s += &"\n}\n";
-        s
-    } else {
-        unreachable!()
-    }
+pub fn cpp_print<'e>(f: &FunctionDecrare<'e>) -> String {
+    let mut s: String = "".to_string();
+    s += &format!(
+        "Int {}({}) {{\n",
+        f.name,
+        f.args.iter()
+            .map(|v| format!("Int {}", v.name()))
+            .collect::<Vec<String>>()
+            .join(", ")
+    );
+    s += &"Int sum = Int(0);\n";
+    s += &to_cpp_source(&f.body);
+    s += &"\nreturn sum;\n";
+    s += &"\n}\n";
+    s
 }

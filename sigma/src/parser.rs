@@ -9,10 +9,38 @@ use num::{BigInt, BigRational, One};
 
 use crate::{
     constant::Type,
-    function::Function,
+    function::{Function, FunctionDecrare},
     polynomials::{linear_polynomial::LinearPolynomial, polynomial::Polynomial},
     variable::{Variable, VariableManager},
 };
+
+struct FunctionExpr {
+    name: String,
+    args: Vec<String>,
+    f: Box<Expr>,
+}
+impl FunctionExpr {
+    fn to_functions<'e>(
+        &self,
+        gen: &'e VariableManager,
+        vars: &HashMap<String, Variable<'e>>,
+    ) -> Option<FunctionDecrare<'e>> {
+        let mut vars = vars.clone();
+        let args = self.args
+            .iter()
+            .map(|v| {
+                let var = gen.new_var(v.clone());
+                vars.insert(v.clone(), var.clone());
+                var
+            })
+            .collect::<Vec<_>>();
+        if let Some(f) = self.f.to_functions(gen, &vars) {
+            Some(FunctionDecrare{name: self.name.clone(), args: args, body: f.clone()})//::new_declare(name.clone(), args, f.clone()))
+        } else {
+            None
+        }
+    }
+}
 
 enum Expr {
     Int {
@@ -39,11 +67,11 @@ enum Expr {
         r: Box<Self>,
         f: Box<Self>,
     },
-    Function {
+/*    Function {
         name: String,
         args: Vec<String>,
         f: Box<Self>,
-    },
+    },*/
     If {
         cond: Box<Self>,
         f: Box<Self>,
@@ -227,7 +255,7 @@ impl Expr {
                     None
                 }
             }
-            Self::Function { name, args, f } => {
+/*            Self::Function { name, args, f } => {
                 let mut vars = vars.clone();
                 let args = args
                     .iter()
@@ -238,16 +266,16 @@ impl Expr {
                     })
                     .collect::<Vec<_>>();
                 if let Some(f) = f.to_functions(gen, &vars) {
-                    Some(Function::new_declare(name.clone(), args, f.clone()))
+                    Some(FunctionDecrare{name: name.clone(), args: args, f: f.clone()})//::new_declare(name.clone(), args, f.clone()))
                 } else {
                     None
                 }
-            }
+            }*/
         }
     }
 }
 
-pub fn parse<'e>(source: &str, gen: &'e VariableManager) -> Option<Function<'e>> {
+pub fn parse<'e>(source: &str, gen: &'e VariableManager) -> Option<FunctionDecrare<'e>> {
     let result = function()
         .parse(source)
         .map(|x| x.0.to_functions(gen, &HashMap::new()));
@@ -274,7 +302,7 @@ where
         .map(|t: (char, String)| t.0.to_string() + &t.1)
 }
 
-fn function<I>() -> impl Parser<I, Output = Expr>
+fn function<I>() -> impl Parser<I, Output = FunctionExpr>
 where
     I: Stream<Token = char>,
 {
@@ -286,7 +314,7 @@ where
         op("="),
         expr(),
     )
-        .map(|t| Expr::Function {
+        .map(|t| FunctionExpr {
             name: t.0,
             args: t.2,
             f: Box::new(t.5),

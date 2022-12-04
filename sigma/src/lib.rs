@@ -1,4 +1,4 @@
-use function::Function;
+use function::{Function, FunctionDecrare};
 use optimizers::{
     loop_optimizer::LoopIfSumOptimizer, ChainedOptimizer, ConstantOptimizer, FullyOptimizer,
     ObviousBinOpOptimizer, ObviousIfOptimizer, Optimizer, PolynomialOptimizer,
@@ -22,7 +22,8 @@ pub mod polynomials;
 pub mod printer;
 pub mod variable;
 
-fn default_optimize(f: Function) -> Function {
+fn default_optimize(f: FunctionDecrare) -> FunctionDecrare {
+    let mut f = f;
     let optimizer = ChainedOptimizer {
         optimizers: vec![
             Box::new(ConstantOptimizer {}),
@@ -35,7 +36,8 @@ fn default_optimize(f: Function) -> Function {
     };
     let optimizer = FullyOptimizer { optimizer };
 
-    optimizer.optimize(&f).unwrap_or(f)
+    f.body = optimizer.optimize(&f.body).unwrap_or(f.body);
+    f
 }
 
 #[wasm_bindgen]
@@ -59,6 +61,7 @@ mod tests {
 
     use std::str::FromStr;
 
+    use crate::function::FunctionDecrare;
     use crate::{
         constant::Constant, eval::eval_function, function::Function, parser::parse,
         variable::VariableManager,
@@ -67,7 +70,7 @@ mod tests {
     use crate::default_optimize;
     use num::BigInt;
 
-    fn test_eval(f: &Function, vals: &Vec<BigInt>, expect: &Constant) {
+    fn test_eval(f: &FunctionDecrare, vals: &Vec<BigInt>, expect: &Constant) {
         let val = eval_function(f, vals);
         assert_eq!(&val, expect);
     }
