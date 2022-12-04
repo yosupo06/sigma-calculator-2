@@ -1,10 +1,9 @@
-use num::{integer::gcd, BigInt, BigRational, One, Zero};
+use num::{BigRational, Zero};
 
 use crate::{
     constant::{Constant, Type},
     eval::quick_eval_constant,
     function::{Function, FunctionData},
-    polynomials::linear_polynomial::LinearPolynomial,
 };
 
 use self::replace::replace_all;

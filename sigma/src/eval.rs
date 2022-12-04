@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use num::{BigInt, BigRational, One, Signed, Zero};
 
 use crate::constant::Constant;
-use crate::function::{Function, FunctionData, FunctionDecrare};
+use crate::function::{Function, FunctionData, FunctionDeclare};
 
 use crate::variable::Variable;
 
@@ -30,9 +30,7 @@ pub fn quick_eval_constant(f: &Function) -> Option<Constant> {
                 None
             }
         }
-        FunctionData::IsNotNeg { p } => {
-            p.to_constant().map(|x| Constant::Bool(!x.is_negative()))
-        }
+        FunctionData::IsNotNeg { p } => p.to_constant().map(|x| Constant::Bool(!x.is_negative())),
         FunctionData::IsDivisor { l, r } => {
             l.to_constant().map(|x| Constant::Bool((x % r).is_zero()))
         }
@@ -99,12 +97,8 @@ pub fn eval<'e>(f: &Function<'e>, vals: &HashMap<Variable<'e>, BigInt>) -> Const
                 todo!()
             }
         }
-        FunctionData::IsNotNeg { p } => {
-            Constant::Bool(!p.eval(vals).unwrap().is_negative())
-        }
-        FunctionData::IsDivisor { l, r } => {
-            Constant::Bool((l.eval(vals).unwrap() % r).is_zero())
-        }
+        FunctionData::IsNotNeg { p } => Constant::Bool(!p.eval(vals).unwrap().is_negative()),
+        FunctionData::IsDivisor { l, r } => Constant::Bool((l.eval(vals).unwrap() % r).is_zero()),
         _ => {
             println!("error: {}", f.to_source());
             todo!()
@@ -112,29 +106,13 @@ pub fn eval<'e>(f: &Function<'e>, vals: &HashMap<Variable<'e>, BigInt>) -> Const
     }
 }
 
-pub fn eval_function<'e>(f: &FunctionDecrare<'e>, vals: &Vec<BigInt>) -> Constant {
+pub fn eval_function<'e>(f: &FunctionDeclare<'e>, vals: &Vec<BigInt>) -> Constant {
     assert_eq!(vals.len(), f.args.len());
     let map = HashMap::from_iter(
-        f.args.iter()
+        f.args
+            .iter()
             .zip(vals.iter())
             .map(|(x, y)| (x.clone(), y.clone())),
     );
     eval(&f.body, &map)
-/*
-    if let FunctionData::Declare {
-        name: _,
-        args,
-        body,
-    } = f.data()
-    {
-        assert_eq!(vals.len(), args.len());
-        let map = HashMap::from_iter(
-            args.iter()
-                .zip(vals.iter())
-                .map(|(x, y)| (x.clone(), y.clone())),
-        );
-        eval(body, &map)
-    } else {
-        panic!();
-    }*/
 }

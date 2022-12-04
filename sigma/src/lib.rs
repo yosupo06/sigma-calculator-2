@@ -1,8 +1,14 @@
-use function::{Function, FunctionDecrare};
+use function::FunctionDeclare;
 use optimizers::{
-    loop_optimizer::LoopIfSumOptimizer, ChainedOptimizer, ConstantOptimizer, FullyOptimizer,
-    ObviousBinOpOptimizer, ObviousIfOptimizer, Optimizer, PolynomialOptimizer,
-//    SimplifyConditionOptimizer,
+    loop_optimizer::LoopIfSumOptimizer,
+    ChainedOptimizer,
+    ConstantOptimizer,
+    FullyOptimizer,
+    ObviousBinOpOptimizer,
+    ObviousIfOptimizer,
+    Optimizer,
+    PolynomialOptimizer,
+    //    SimplifyConditionOptimizer,
 };
 use parser::parse;
 use printer::cpp_print;
@@ -22,14 +28,14 @@ pub mod polynomials;
 pub mod printer;
 pub mod variable;
 
-fn default_optimize(f: FunctionDecrare) -> FunctionDecrare {
+fn default_optimize(f: FunctionDeclare) -> FunctionDeclare {
     let mut f = f;
     let optimizer = ChainedOptimizer {
         optimizers: vec![
             Box::new(ConstantOptimizer {}),
             Box::new(ObviousBinOpOptimizer {}),
             Box::new(ObviousIfOptimizer {}),
-//            Box::new(SimplifyConditionOptimizer {}),
+            //            Box::new(SimplifyConditionOptimizer {}),
             Box::new(PolynomialOptimizer {}),
             Box::new(LoopIfSumOptimizer {}),
         ],
@@ -61,16 +67,15 @@ mod tests {
 
     use std::str::FromStr;
 
-    use crate::function::FunctionDecrare;
+    use crate::function::FunctionDeclare;
     use crate::{
-        constant::Constant, eval::eval_function, function::Function, parser::parse,
-        variable::VariableManager,
+        constant::Constant, eval::eval_function, parser::parse, variable::VariableManager,
     };
 
     use crate::default_optimize;
     use num::BigInt;
 
-    fn test_eval(f: &FunctionDecrare, vals: &Vec<BigInt>, expect: &Constant) {
+    fn test_eval(f: &FunctionDeclare, vals: &Vec<BigInt>, expect: &Constant) {
         let val = eval_function(f, vals);
         assert_eq!(&val, expect);
     }

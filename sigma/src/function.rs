@@ -10,9 +10,8 @@ use crate::polynomials::linear_polynomial::LinearPolynomial;
 use crate::polynomials::polynomial::Polynomial;
 use crate::variable::Variable;
 
-
 #[derive(Clone, Debug)]
-pub struct FunctionDecrare<'e> {
+pub struct FunctionDeclare<'e> {
     pub name: String,
     pub args: Vec<Variable<'e>>,
     pub body: Function<'e>,
@@ -72,12 +71,6 @@ pub enum FunctionData<'e> {
         r: Function<'e>,
         f: Function<'e>,
     },
-    // declare
-/*    Declare {
-        name: String,
-        args: Vec<Variable<'e>>,
-        body: Function<'e>,
-    },*/
 }
 
 impl<'e> Deref for Function<'e> {
@@ -104,7 +97,6 @@ impl<'e> Function<'e> {
             FunctionData::IsDivisor { .. } => &Type::Bool,
             FunctionData::If { t, .. } => t,
             FunctionData::LoopSum { t, .. } => t,
-//            FunctionData::Declare { .. } => unreachable!(),
         }
     }
     pub fn data(&self) -> &FunctionData<'e> {
@@ -174,9 +166,6 @@ impl<'e> Function<'e> {
         })
         .into()
     }
-/*    pub fn new_declare(name: String, args: Vec<Variable<'e>>, body: Self) -> Self {
-        Rc::new(FunctionData::Declare { name, args, body }).into()
-    }*/
 
     fn to_source_lines(&self) -> Vec<String> {
         let shift = |v: Vec<String>| -> Vec<String> {
@@ -221,18 +210,20 @@ impl<'e> Function<'e> {
                 v
             }
             FunctionData::IsDivisor { l, r } => {
-                vec![format!("({} % {} == 0)", Polynomial::<Variable<'e>, BigInt>::from(l.clone()), r,)]
+                vec![format!(
+                    "({} % {} == 0)",
+                    Polynomial::<Variable<'e>, BigInt>::from(l.clone()),
+                    r,
+                )]
             }
             FunctionData::IsNotNeg { p } => {
-                vec![format!("({} >= 0)", Polynomial::<Variable<'e>, BigInt>::from(p.clone()))]
+                vec![format!(
+                    "({} >= 0)",
+                    Polynomial::<Variable<'e>, BigInt>::from(p.clone())
+                )]
             }
             FunctionData::Neg { v } => vec![format!("-({})", v.to_source_s_line())],
             FunctionData::Not { v } => vec![format!("!({})", v.to_source_s_line())],
-/*            FunctionData::Declare { name, args, body } => {
-                let mut v = vec![format!("{}({:?})=", name, args)];
-                v.append(&mut shift(body.to_source_lines()));
-                v
-            }*/
         }
     }
 

@@ -9,7 +9,7 @@ use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 use num::rational::BigRational;
 use num::traits::Zero;
 use num::traits::{One, Pow};
-use num::{zero, BigInt};
+use num::zero;
 
 use crate::math::faulhaber;
 

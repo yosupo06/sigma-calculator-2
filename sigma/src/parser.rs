@@ -9,7 +9,7 @@ use num::{BigInt, BigRational, One};
 
 use crate::{
     constant::Type,
-    function::{Function, FunctionDecrare},
+    function::{Function, FunctionDeclare},
     polynomials::{linear_polynomial::LinearPolynomial, polynomial::Polynomial},
     variable::{Variable, VariableManager},
 };
@@ -20,13 +20,10 @@ struct FunctionExpr {
     f: Box<Expr>,
 }
 impl FunctionExpr {
-    fn to_functions<'e>(
-        &self,
-        gen: &'e VariableManager,
-        vars: &HashMap<String, Variable<'e>>,
-    ) -> Option<FunctionDecrare<'e>> {
-        let mut vars = vars.clone();
-        let args = self.args
+    fn to_functions<'e>(&self, gen: &'e VariableManager) -> Option<FunctionDeclare<'e>> {
+        let mut vars = HashMap::new();
+        let args = self
+            .args
             .iter()
             .map(|v| {
                 let var = gen.new_var(v.clone());
@@ -35,7 +32,11 @@ impl FunctionExpr {
             })
             .collect::<Vec<_>>();
         if let Some(f) = self.f.to_functions(gen, &vars) {
-            Some(FunctionDecrare{name: self.name.clone(), args: args, body: f.clone()})//::new_declare(name.clone(), args, f.clone()))
+            Some(FunctionDeclare {
+                name: self.name.clone(),
+                args: args,
+                body: f,
+            })
         } else {
             None
         }
@@ -67,11 +68,6 @@ enum Expr {
         r: Box<Self>,
         f: Box<Self>,
     },
-/*    Function {
-        name: String,
-        args: Vec<String>,
-        f: Box<Self>,
-    },*/
     If {
         cond: Box<Self>,
         f: Box<Self>,
@@ -108,10 +104,7 @@ impl Expr {
             Self::Int { v } => Some(LinearPolynomial::from(BigInt::from(v.clone()))),
             Self::Variable { name } => {
                 if let Some(v) = vars.get(name) {
-                    Some(LinearPolynomial::from([(
-                        Some(v.clone()),
-                        BigInt::one(),
-                    )]))
+                    Some(LinearPolynomial::from([(Some(v.clone()), BigInt::one())]))
                 } else {
                     None
                 }
@@ -255,30 +248,12 @@ impl Expr {
                     None
                 }
             }
-/*            Self::Function { name, args, f } => {
-                let mut vars = vars.clone();
-                let args = args
-                    .iter()
-                    .map(|v| {
-                        let var = gen.new_var(v.clone());
-                        vars.insert(v.clone(), var.clone());
-                        var
-                    })
-                    .collect::<Vec<_>>();
-                if let Some(f) = f.to_functions(gen, &vars) {
-                    Some(FunctionDecrare{name: name.clone(), args: args, f: f.clone()})//::new_declare(name.clone(), args, f.clone()))
-                } else {
-                    None
-                }
-            }*/
         }
     }
 }
 
-pub fn parse<'e>(source: &str, gen: &'e VariableManager) -> Option<FunctionDecrare<'e>> {
-    let result = function()
-        .parse(source)
-        .map(|x| x.0.to_functions(gen, &HashMap::new()));
+pub fn parse<'e>(source: &str, gen: &'e VariableManager) -> Option<FunctionDeclare<'e>> {
+    let result = function().parse(source).map(|x| x.0.to_functions(gen));
     match result {
         Ok(v) => v,
         _ => None,

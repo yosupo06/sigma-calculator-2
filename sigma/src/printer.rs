@@ -1,7 +1,7 @@
-use num::{integer::lcm, BigRational, One, Zero, BigInt};
+use num::{integer::lcm, BigInt, BigRational, One, Zero};
 
 use crate::{
-    function::{Function, FunctionData, FunctionDecrare},
+    function::{Function, FunctionData, FunctionDeclare},
     polynomials::{linear_polynomial::LinearPolynomial, polynomial::Polynomial},
     variable::Variable,
 };
@@ -167,12 +167,13 @@ fn to_cpp_source<'e>(f: &Function<'e>) -> String {
     to_cpp_source_lines(f).join("\n")
 }
 
-pub fn cpp_print<'e>(f: &FunctionDecrare<'e>) -> String {
+pub fn cpp_print<'e>(f: &FunctionDeclare<'e>) -> String {
     let mut s: String = "".to_string();
     s += &format!(
         "Int {}({}) {{\n",
         f.name,
-        f.args.iter()
+        f.args
+            .iter()
             .map(|v| format!("Int {}", v.name()))
             .collect::<Vec<String>>()
             .join(", ")
