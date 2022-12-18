@@ -5,8 +5,7 @@ where
     F: FnMut(&Function<'e>) -> Option<Function<'e>>,
 {
     match f.data() {
-        FunctionData::Bool { f: _ } => None,
-        FunctionData::PolynomialAsInt { p: _ } => None,
+        FunctionData::Polynomial { p: _ } => None,
         FunctionData::LoopSum { i, l, r, f: cf, .. } => {
             let l2 = replace_all_internal(l, rule);
             let r2 = replace_all_internal(r, rule);
@@ -23,15 +22,11 @@ where
                 None
             }
         }
-        FunctionData::If { cond, f: cf, .. } => {
-            let p2 = replace_all_internal(cond, rule);
-            let cf2 = replace_all_internal(cf, rule);
+        FunctionData::If { cond, f, .. } => {
+            let f2 = replace_all_internal(f, rule);
 
-            if p2.is_some() || cf2.is_some() {
-                Some(Function::new_if(
-                    p2.unwrap_or(cond.clone()),
-                    cf2.unwrap_or(cf.clone()),
-                ))
+            if f2.is_some() {
+                Some(Function::new_if(cond.clone(), f2.unwrap_or(f.clone())))
             } else {
                 None
             }
@@ -62,14 +57,7 @@ where
                 None
             }
         }
-        FunctionData::IsNotNeg { p: _ } => None,
-        FunctionData::IsDivisor { l: _, r: _ } => None,
         FunctionData::Neg { v } => replace_all_internal(v, rule).map(Function::new_neg),
-        /*        FunctionData::Declare { name, args, body } => replace_all_internal(body, rule)
-        .map(|body| Function::new_declare(name.clone(), args.clone(), body)),*/
-        _ => {
-            todo!()
-        }
     }
 }
 

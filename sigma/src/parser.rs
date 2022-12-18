@@ -8,8 +8,8 @@ use combine::{
 use num::{BigInt, BigRational, One};
 
 use crate::{
-    constant::Type,
-    function::{Function, FunctionDeclare},
+    //    constant::Type,
+    function::{Condition, Function, FunctionDeclare, IsDivisor, IsNotNeg},
     polynomials::{linear_polynomial::LinearPolynomial, polynomial::Polynomial},
     variable::{Variable, VariableManager},
 };
@@ -34,7 +34,7 @@ impl FunctionExpr {
         if let Some(f) = self.f.to_functions(gen, &vars) {
             Some(FunctionDeclare {
                 name: self.name.clone(),
-                args: args,
+                args,
                 body: f,
             })
         } else {
@@ -156,6 +156,34 @@ impl Expr {
         }
     }
 
+    fn to_condition<'e>(
+        &self,
+        gen: &'e VariableManager,
+        vars: &HashMap<String, Variable<'e>>,
+    ) -> Option<Condition<'e>> {
+        match self {
+            Self::IsDivisor { l, r } => {
+                if let (Some(l), Some(r)) = (l.to_int(gen, vars), r.to_linear_polynomial(gen, vars))
+                {
+                    Some(Condition::IsDivisor(IsDivisor::new(r, l)))
+                } else {
+                    None
+                }
+            }
+            Self::LessEq { l, r } => {
+                if let (Some(l), Some(r)) = (
+                    l.to_linear_polynomial(gen, vars),
+                    r.to_linear_polynomial(gen, vars),
+                ) {
+                    Some(Condition::IsNotNeg(IsNotNeg::new(r - l)))
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
     fn to_functions<'e>(
         &self,
         gen: &'e VariableManager,
@@ -203,30 +231,8 @@ impl Expr {
                     None
                 }
             }
-            Self::LessEq { l, r } => {
-                if let (Some(l), Some(r)) = (
-                    l.to_linear_polynomial(gen, vars),
-                    r.to_linear_polynomial(gen, vars),
-                ) {
-                    Some(Function::new_is_not_neg(r - l))
-                } else {
-                    None
-                }
-            }
-            Self::IsDivisor { l, r } => {
-                if let (Some(l), Some(r)) = (l.to_int(gen, vars), r.to_linear_polynomial(gen, vars))
-                {
-                    Some(Function::new_is_divisor(r, l))
-                } else {
-                    None
-                }
-            }
-
             Self::Sum { v, l, r, f } => {
                 if let (Some(l), Some(r)) = (l.to_functions(gen, vars), r.to_functions(gen, vars)) {
-                    if l.return_type() != &Type::Integer || r.return_type() != &Type::Integer {
-                        return None;
-                    }
                     let mut vars = vars.clone();
                     let var = gen.new_var(v.clone());
                     vars.insert(v.clone(), var.clone());
@@ -241,13 +247,14 @@ impl Expr {
             }
             Self::If { cond, f } => {
                 if let (Some(cond), Some(f)) =
-                    (cond.to_functions(gen, vars), f.to_functions(gen, vars))
+                    (cond.to_condition(gen, vars), f.to_functions(gen, vars))
                 {
                     Some(Function::new_if(cond, f))
                 } else {
                     None
                 }
             }
+            _ => None,
         }
     }
 }

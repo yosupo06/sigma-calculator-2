@@ -1,76 +1,10 @@
 use num::{integer::lcm, BigInt, BigRational, One, Zero};
 
 use crate::{
-    function::{Function, FunctionData, FunctionDeclare},
+    function::{Condition, Function, FunctionData, FunctionDeclare, IsDivisor, IsNotNeg},
     polynomials::{linear_polynomial::LinearPolynomial, polynomial::Polynomial},
     variable::Variable,
 };
-/*
-    fn to_source_lines(&self) -> Vec<String> {
-        let shift = |v: Vec<String>| -> Vec<String> {
-            v.into_iter().map(|x| "  ".to_string() + &x).collect()
-        };
-        match self.data() {
-            FunctionData::Bool { f } => vec![format!("({})", f)],
-            FunctionData::PolynomialAsInt { p } => vec![format!("({})", p)],
-            FunctionData::Add { l, r, .. } => {
-                let mut ls = l.to_source_lines();
-                let mut rs = r.to_source_lines();
-
-                if ls.len() == 1 && rs.len() == 1 {
-                    vec![format!("({}) + ({})", ls[0], rs[0])]
-                } else {
-                    ls.push("+".to_string());
-                    ls.append(&mut rs);
-                    ls
-                }
-            }
-            FunctionData::Mul { l, r, .. } => {
-                vec![format!(
-                    "({} * {})",
-                    l.to_source_s_line(),
-                    r.to_source_s_line()
-                )]
-            }
-            FunctionData::LoopSum { i, l, r, f, .. } => {
-                let mut v = vec![format!(
-                    "$({}_{} = {} .. {})",
-                    i.name(),
-                    i.id,
-                    l.to_source_s_line(),
-                    r.to_source_s_line(),
-                )];
-                v.append(&mut shift(f.to_source_lines()));
-                v
-            }
-            FunctionData::If { cond, f, .. } => {
-                let mut v = vec![format!("[{}]", cond.to_source_s_line())];
-                v.append(&mut shift(f.to_source_lines()));
-                v
-            }
-            FunctionData::IntIsDivisor { l, r } => {
-                vec![format!("({} % {} == 0)", Polynomial::from(l.clone()), r,)]
-            }
-            FunctionData::IntIsNotNeg { p } => {
-                vec![format!("({} >= 0)", Polynomial::from(p.clone()))]
-            }
-            FunctionData::Neg { v } => vec![format!("-({})", v.to_source_s_line())],
-            FunctionData::Not { v } => vec![format!("!({})", v.to_source_s_line())],
-            FunctionData::Declare { name, args, body } => {
-                let mut v = vec![format!("{}({:?})=", name, args)];
-                v.append(&mut shift(body.to_source_lines()));
-                v
-            }
-        }
-    }
-
-    pub fn to_source(&self) -> String {
-        self.to_source_lines().join("\n")
-    }
-    pub fn to_source_s_line(&self) -> String {
-        self.to_source_lines().join(" ")
-    }
-*/
 
 fn print_polynomial<'e>(p: &Polynomial<Variable<'e>, BigRational>) -> String {
     if p.is_zero() {
@@ -104,6 +38,17 @@ fn print_polynomial<'e>(p: &Polynomial<Variable<'e>, BigRational>) -> String {
         result
     } else {
         format!("({}) / {}", result, g)
+    }
+}
+
+fn print_condition<'e>(cond: &Condition<'e>) -> String {
+    match cond {
+        Condition::IsDivisor(IsDivisor { p, c }) => {
+            format!("({}) % {} == 0", print_linear_polynomial(p), c)
+        }
+        Condition::IsNotNeg(IsNotNeg { p }) => {
+            format!("{} >= 0", print_linear_polynomial(p))
+        }
     }
 }
 
@@ -141,7 +86,7 @@ fn to_cpp_source_lines<'e>(f: &Function<'e>) -> Vec<String> {
     let shift =
         |v: Vec<String>| -> Vec<String> { v.into_iter().map(|x| "  ".to_string() + &x).collect() };
     match f.data() {
-        FunctionData::PolynomialAsInt { p } => vec![format!("sum += ({});", print_polynomial(p))],
+        FunctionData::Polynomial { p } => vec![format!("sum += ({});", print_polynomial(p))],
         FunctionData::Add { l, r, .. } => {
             let mut ls = to_cpp_source_lines(l);
             let mut rs = to_cpp_source_lines(r);
@@ -149,16 +94,10 @@ fn to_cpp_source_lines<'e>(f: &Function<'e>) -> Vec<String> {
             ls
         }
         FunctionData::If { cond, f, .. } => {
-            let mut v = vec![format!("if ({}) {{", to_cpp_source(cond))];
+            let mut v = vec![format!("if ({}) {{", print_condition(cond))];
             v.append(&mut shift(to_cpp_source_lines(f)));
             v.push("}".to_string());
             v
-        }
-        FunctionData::IsDivisor { l, r } => {
-            vec![format!("({}) % {} == 0", print_linear_polynomial(l), r)]
-        }
-        FunctionData::IsNotNeg { p } => {
-            vec![format!("{} >= 0", print_linear_polynomial(p))]
         }
         _ => todo!(),
     }

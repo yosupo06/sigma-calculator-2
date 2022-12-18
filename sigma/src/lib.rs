@@ -1,14 +1,7 @@
 use function::FunctionDeclare;
 use optimizers::{
-    loop_optimizer::LoopIfSumOptimizer,
-    ChainedOptimizer,
-    ConstantOptimizer,
-    FullyOptimizer,
-    ObviousBinOpOptimizer,
-    ObviousIfOptimizer,
-    Optimizer,
-    PolynomialOptimizer,
-    //    SimplifyConditionOptimizer,
+    binop_optimize_rule, constant_optimize_rule, fully_optimize,
+    loop_optimizer::loop_if_sum_optimize_rule, polynomial_optimize_rule, OptimizeRule,
 };
 use parser::parse;
 use printer::cpp_print;
@@ -18,7 +11,6 @@ use wasm_bindgen::prelude::wasm_bindgen;
 #[macro_use]
 extern crate combine;
 
-pub mod constant;
 pub mod eval;
 pub mod function;
 pub mod math;
@@ -28,27 +20,19 @@ pub mod polynomials;
 pub mod printer;
 pub mod variable;
 
-fn default_optimize(f: FunctionDeclare) -> FunctionDeclare {
-    let mut f = f;
-    let optimizer = ChainedOptimizer {
-        optimizers: vec![
-            Box::new(ConstantOptimizer {}),
-            Box::new(ObviousBinOpOptimizer {}),
-            Box::new(ObviousIfOptimizer {}),
-            //            Box::new(SimplifyConditionOptimizer {}),
-            Box::new(PolynomialOptimizer {}),
-            Box::new(LoopIfSumOptimizer {}),
-        ],
-    };
-    let optimizer = FullyOptimizer { optimizer };
-
-    f.body = optimizer.optimize(&f.body).unwrap_or(f.body);
-    f
+fn default_optimize<'e>(f: FunctionDeclare<'e>) -> FunctionDeclare<'e> {
+    fully_optimize(
+        f,
+        constant_optimize_rule()
+            .or(binop_optimize_rule())
+            .or(polynomial_optimize_rule())
+            .or(loop_if_sum_optimize_rule()),
+    )
 }
 
 #[wasm_bindgen]
 pub fn to_cpp_code(source: &str) -> String {
-    let var_manager = VariableManager::new();
+    let var_manager = VariableManager::default();
 
     let f = parse(source, &var_manager);
 
@@ -68,20 +52,18 @@ mod tests {
     use std::str::FromStr;
 
     use crate::function::FunctionDeclare;
-    use crate::{
-        constant::Constant, eval::eval_function, parser::parse, variable::VariableManager,
-    };
+    use crate::{eval::eval_function, parser::parse, variable::VariableManager};
 
     use crate::default_optimize;
     use num::BigInt;
 
-    fn test_eval(f: &FunctionDeclare, vals: &Vec<BigInt>, expect: &Constant) {
+    fn test_eval(f: &FunctionDeclare, vals: &Vec<BigInt>, expect: &BigInt) {
         let val = eval_function(f, vals);
         assert_eq!(&val, expect);
     }
 
-    fn test_function(s: &str, vals: Vec<BigInt>, expect: Constant) {
-        let var_manager = VariableManager::new();
+    fn test_function(s: &str, vals: Vec<BigInt>, expect: BigInt) {
+        let var_manager = VariableManager::default();
         let f = parse(s, &var_manager);
         assert!(f.is_some());
         let f = f.unwrap();
@@ -91,8 +73,8 @@ mod tests {
         test_eval(&f, &vals, &expect);
     }
 
-    fn test_opt_function(s: &str, vals: Vec<BigInt>, expect: Constant) {
-        let var_manager = VariableManager::new();
+    fn test_opt_function(s: &str, vals: Vec<BigInt>, expect: BigInt) {
+        let var_manager = VariableManager::default();
         let f = parse(s, &var_manager);
         assert!(f.is_some());
         let f = f.unwrap();
@@ -102,7 +84,7 @@ mod tests {
     }
 
     fn test_compare_opt(s: &str, vals: Vec<BigInt>) {
-        let var_manager = VariableManager::new();
+        let var_manager = VariableManager::default();
         let f = parse(s, &var_manager);
         assert!(f.is_some());
         let f = f.unwrap();
@@ -115,16 +97,12 @@ mod tests {
 
     #[test]
     fn test() {
-        test_function("f()=123", vec![], Constant::Integer(123.into()));
-        test_function(
-            "f(n)=$(i=0..n)i",
-            vec![100.into()],
-            Constant::Integer(5050.into()),
-        );
+        test_function("f()=123", vec![], 123.into());
+        test_function("f(n)=$(i=0..n)i", vec![100.into()], 5050.into());
         test_function(
             "f(A, B)=$(i=A..B)[2|i]1",
             vec![2.into(), 99.into()],
-            Constant::Integer(49.into()),
+            49.into(),
         );
     }
 
@@ -176,7 +154,7 @@ mod tests {
     fn test_abc269_f() {
         let s = "f(M, A, B, C, D)=$(i=A..B)$(j=C..D)[2|i+j]((i-1)*M+j)";
         let test = |m: BigInt, a: BigInt, b: BigInt, c: BigInt, d: BigInt, ans: BigInt| {
-            test_opt_function(s, vec![m, a, b, c, d], Constant::Integer(ans));
+            test_opt_function(s, vec![m, a, b, c, d], ans);
         };
         test(
             999999999.into(),

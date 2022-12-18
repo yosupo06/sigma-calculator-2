@@ -1,9 +1,9 @@
 use num::{BigRational, Zero};
 
 use crate::{
-    constant::{Constant, Type},
+    //    constant::{Type},
     eval::quick_eval_constant,
-    function::{Function, FunctionData},
+    function::{Function, FunctionData, FunctionDeclare},
 };
 
 use self::replace::replace_all;
@@ -11,47 +11,62 @@ use self::replace::replace_all;
 pub mod loop_optimizer;
 pub mod replace;
 
-pub trait Optimizer<'e> {
-    fn optimize(&self, f: &Function<'e>) -> Option<Function<'e>>;
+pub trait OptimizeRule<'e> {
+    fn optimize(&mut self, f: &Function<'e>) -> Option<Function<'e>>;
+
+    fn or<T: OptimizeRule<'e>>(self, other: T) -> Or<Self, T>
+    where
+        Self: Sized,
+        T: Sized,
+    {
+        Or(self, other)
+    }
+}
+impl<'e, T> OptimizeRule<'e> for T
+where
+    T: FnMut(&Function<'e>) -> Option<Function<'e>>,
+{
+    fn optimize(&mut self, f: &Function<'e>) -> Option<Function<'e>> {
+        self(f)
+    }
 }
 
-pub struct ConstantOptimizer {}
-impl<'e> Optimizer<'e> for ConstantOptimizer {
-    fn optimize(&self, f: &Function<'e>) -> Option<Function<'e>> {
-        if matches!(f.data(), FunctionData::Bool { .. }) {
-            return None;
-        }
-        if matches!(f.data(), FunctionData::PolynomialAsInt { .. }) {
+pub struct Or<P1, P2>(P1, P2);
+impl<'e, P1, P2> OptimizeRule<'e> for Or<P1, P2>
+where
+    P1: OptimizeRule<'e>,
+    P2: OptimizeRule<'e>,
+{
+    fn optimize(&mut self, f: &Function<'e>) -> Option<Function<'e>> {
+        self.0.optimize(f).or(self.1.optimize(f))
+    }
+}
+
+pub fn constant_optimize_rule<'e>() -> impl OptimizeRule<'e> {
+    |f: &Function<'e>| {
+        if matches!(f.data(), FunctionData::Polynomial { .. }) {
             return None;
         }
         if let Some(x) = quick_eval_constant(f) {
-            match x {
-                Constant::Integer(x) => {
-                    Some(Function::new_polynomial_as_int(BigRational::from(x).into()))
-                }
-                Constant::Bool(x) => Some(Function::new_bool(x)),
-            }
+            Some(Function::new_polynomial_as_int(BigRational::from(x).into()))
         } else {
             None
         }
     }
 }
 
-pub struct ObviousBinOpOptimizer {}
-impl<'e> Optimizer<'e> for ObviousBinOpOptimizer {
-    fn optimize(&self, f: &Function<'e>) -> Option<Function<'e>> {
+pub fn binop_optimize_rule<'e>() -> impl OptimizeRule<'e> {
+    |f: &Function<'e>| {
         if let FunctionData::Add { l, r, .. } = f.data() {
-            if f.return_type() == &Type::Integer {
-                // a + 0 = 0 + a = a
-                if let FunctionData::PolynomialAsInt { p } = l.data() {
-                    if p.is_zero() {
-                        return Some(r.clone());
-                    }
+            // a + 0 = 0 + a = a
+            if let FunctionData::Polynomial { p } = l.data() {
+                if p.is_zero() {
+                    return Some(r.clone());
                 }
-                if let FunctionData::PolynomialAsInt { p } = r.data() {
-                    if p.is_zero() {
-                        return Some(l.clone());
-                    }
+            }
+            if let FunctionData::Polynomial { p } = r.data() {
+                if p.is_zero() {
+                    return Some(l.clone());
                 }
             }
         }
@@ -59,6 +74,38 @@ impl<'e> Optimizer<'e> for ObviousBinOpOptimizer {
     }
 }
 
+pub fn polynomial_optimize_rule<'e>() -> impl OptimizeRule<'e> {
+    |f: &Function<'e>| match f.data() {
+        FunctionData::Add { l, r, .. } => {
+            if let (FunctionData::Polynomial { p: lp }, FunctionData::Polynomial { p: rp }) =
+                (l.data(), r.data())
+            {
+                Some(Function::new_polynomial_as_int(lp.clone() + rp.clone()))
+            } else {
+                None
+            }
+        }
+        FunctionData::Mul { l, r, .. } => {
+            if let (FunctionData::Polynomial { p: lp }, FunctionData::Polynomial { p: rp }) =
+                (l.data(), r.data())
+            {
+                Some(Function::new_polynomial_as_int(lp.clone() * rp.clone()))
+            } else {
+                None
+            }
+        }
+        FunctionData::Neg { v } => {
+            if let FunctionData::Polynomial { p } = v.data() {
+                Some(Function::new_polynomial_as_int(-p.clone()))
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
+/*
 pub struct ObviousIfOptimizer {}
 impl<'e> Optimizer<'e> for ObviousIfOptimizer {
     fn optimize(&self, f: &Function<'e>) -> Option<Function<'e>> {
@@ -85,7 +132,7 @@ impl<'e> Optimizer<'e> for ObviousIfOptimizer {
         }
         None
     }
-}
+}*/
 /*
 pub struct SimplifyConditionOptimizer {}
 impl<'e> Optimizer<'e> for SimplifyConditionOptimizer {
@@ -132,66 +179,11 @@ impl<'e> Optimizer<'e> for SimplifyConditionOptimizer {
     }
 }
 */
-pub struct PolynomialOptimizer {}
-impl<'e> Optimizer<'e> for PolynomialOptimizer {
-    fn optimize(&self, f: &Function<'e>) -> Option<Function<'e>> {
-        match f.data() {
-            FunctionData::Add { l, r, .. } => {
-                if let (
-                    FunctionData::PolynomialAsInt { p: lp },
-                    FunctionData::PolynomialAsInt { p: rp },
-                ) = (l.data(), r.data())
-                {
-                    Some(Function::new_polynomial_as_int(lp.clone() + rp.clone()))
-                } else {
-                    None
-                }
-            }
-            FunctionData::Mul { l, r, .. } => {
-                if let (
-                    FunctionData::PolynomialAsInt { p: lp },
-                    FunctionData::PolynomialAsInt { p: rp },
-                ) = (l.data(), r.data())
-                {
-                    Some(Function::new_polynomial_as_int(lp.clone() * rp.clone()))
-                } else {
-                    None
-                }
-            }
-            FunctionData::Neg { v } => {
-                if let FunctionData::PolynomialAsInt { p } = v.data() {
-                    Some(Function::new_polynomial_as_int(-p.clone()))
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
-    }
-}
 
-pub struct ChainedOptimizer<'e> {
-    pub optimizers: Vec<Box<dyn Optimizer<'e>>>,
-}
-impl<'e> Optimizer<'e> for ChainedOptimizer<'e> {
-    fn optimize(&self, f: &Function<'e>) -> Option<Function<'e>> {
-        for optimizer in &self.optimizers {
-            if let Some(f) = optimizer.optimize(f) {
-                return Some(f);
-            }
-        }
-        None
-    }
-}
-
-pub struct FullyOptimizer<T> {
-    pub optimizer: T,
-}
-impl<'e, T> Optimizer<'e> for FullyOptimizer<T>
-where
-    T: Optimizer<'e>,
-{
-    fn optimize(&self, f: &Function<'e>) -> Option<Function<'e>> {
-        replace_all(f, |f2| self.optimizer.optimize(f2))
-    }
+pub fn fully_optimize<'e>(
+    mut f: FunctionDeclare<'e>,
+    mut rule: impl OptimizeRule<'e>,
+) -> FunctionDeclare<'e> {
+    f.body = replace_all(&f.body, |f2| rule.optimize(f2)).unwrap_or(f.body);
+    f
 }

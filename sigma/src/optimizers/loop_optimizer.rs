@@ -1,104 +1,17 @@
 use num::{integer::gcd, BigInt, BigRational, One, Signed, ToPrimitive, Zero};
 
 use crate::{
-    function::{Function, FunctionData},
+    function::{Condition, Function, FunctionData, IsDivisor, IsNotNeg},
     math::mod_inverse,
     polynomials::{linear_polynomial::LinearPolynomial, polynomial::Polynomial},
     variable::Variable,
 };
 
-use super::Optimizer;
-
-#[derive(Debug, Clone)]
-struct LinearIsNotNeg<'e> {
-    // evaluated p isn't integer => undefined
-    p: LinearPolynomial<Variable<'e>, BigInt>,
-}
-impl<'e> LinearIsNotNeg<'e> {
-    fn is_not_neg(p: LinearPolynomial<Variable<'e>, BigInt>) -> Self {
-        if p == Default::default() {
-            return LinearIsNotNeg {
-                p: Default::default(),
-            };
-        }
-
-        // TODO: gcd
-        LinearIsNotNeg { p: p }
-    }
-
-    // x <- f / denom
-    fn composite(
-        &self,
-        x: &Variable<'e>,
-        f: &LinearPolynomial<Variable<'e>, BigInt>,
-        denom: &BigInt,
-    ) -> Self {
-        Self::is_not_neg((self.p.clone() * denom.clone()).composite(x, f))
-    }
-}
-impl<'e> From<LinearIsNotNeg<'e>> for Function<'e> {
-    fn from(item: LinearIsNotNeg<'e>) -> Self {
-        Function::new_is_not_neg(item.p)
-    }
-}
-
-#[derive(Debug, Clone)]
-struct LinearIsDivisor<'e> {
-    // evaluated p isn't integer => undefined
-    p: LinearPolynomial<Variable<'e>, BigInt>,
-    c: BigInt,
-}
-impl<'e> LinearIsDivisor<'e> {
-    fn is_divisor(p: LinearPolynomial<Variable<'e>, BigInt>, c: BigInt) -> Self {
-        assert_ne!(c, BigInt::zero());
-
-        if p == Default::default() {
-            return LinearIsDivisor {
-                p: Default::default(),
-                c: BigInt::one(),
-            };
-        }
-
-        // TODO: gcd
-        LinearIsDivisor { p: p, c: c }
-    }
-
-    // x <- f / denom
-    fn composite(
-        &self,
-        x: &Variable<'e>,
-        f: &LinearPolynomial<Variable<'e>, BigInt>,
-        denom: &BigInt,
-    ) -> Self {
-        Self::is_divisor(
-            (self.p.clone() * denom.clone()).composite(x, f),
-            self.c.clone() * denom.clone(),
-        )
-    }
-}
-impl<'e> From<LinearIsDivisor<'e>> for Function<'e> {
-    fn from(item: LinearIsDivisor<'e>) -> Self {
-        Function::new_is_divisor(item.p, item.c)
-    }
-}
-
-#[derive(Debug, Clone)]
-enum LinearCondition<'e> {
-    IsNotNeg(LinearIsNotNeg<'e>),
-    IsDivisor(LinearIsDivisor<'e>),
-}
-impl<'e> From<LinearCondition<'e>> for Function<'e> {
-    fn from(item: LinearCondition<'e>) -> Self {
-        match item {
-            LinearCondition::IsNotNeg(c) => c.into(),
-            LinearCondition::IsDivisor(c) => c.into(),
-        }
-    }
-}
+use super::OptimizeRule;
 
 fn to_linear_polynomial<'e>(f: &Function<'e>) -> Option<LinearPolynomial<Variable<'e>, BigInt>> {
     match f.data() {
-        FunctionData::PolynomialAsInt { p } => {
+        FunctionData::Polynomial { p } => {
             if let Some(p) = p.to_linear_polynomial() {
                 Some(LinearPolynomial::from_iter(
                     p.into_iter().map(|x| (x.0, x.1.to_integer())),
@@ -111,22 +24,9 @@ fn to_linear_polynomial<'e>(f: &Function<'e>) -> Option<LinearPolynomial<Variabl
     }
 }
 
-fn to_linear_condition<'e>(f: &Function<'e>) -> Option<LinearCondition<'e>> {
-    if let FunctionData::IsNotNeg { p } = f.data() {
-        return Some(LinearCondition::IsNotNeg(LinearIsNotNeg { p: p.clone() }));
-    }
-    if let FunctionData::IsDivisor { l, r } = f.data() {
-        return Some(LinearCondition::IsDivisor(LinearIsDivisor::is_divisor(
-            l.clone(),
-            r.clone(),
-        )));
-    }
-    None
-}
-
 fn sum_linear_is_not_neg_pol<'e>(
     x: &Variable<'e>,
-    conds: &[LinearIsNotNeg<'e>],
+    conds: &[IsNotNeg<'e>],
     pol: &Polynomial<Variable<'e>, BigRational>,
 ) -> Option<Function<'e>> {
     let pol = pol.discrete_integral(x);
@@ -139,20 +39,18 @@ fn sum_linear_is_not_neg_pol<'e>(
 
     type XFocusedCond<'e> = (BigInt, LinearPolynomial<Variable<'e>, BigInt>);
     // x.1 / x.0 <= y.1 / y.0
-    let assume_le = |x: &XFocusedCond<'e>, y: &XFocusedCond<'e>| -> LinearIsNotNeg {
-        LinearIsNotNeg::is_not_neg(y.1.clone() * x.0.clone() - x.1.clone() * y.0.clone())
+    let assume_le = |x: &XFocusedCond<'e>, y: &XFocusedCond<'e>| -> IsNotNeg {
+        IsNotNeg::new(y.1.clone() * x.0.clone() - x.1.clone() * y.0.clone())
     };
     // x.1 / x.0 < y.1 / y.0
-    let assume_lt = |x: &XFocusedCond<'e>, y: &XFocusedCond<'e>| -> LinearIsNotNeg {
-        LinearIsNotNeg::is_not_neg(
-            y.1.clone() * x.0.clone() - x.1.clone() * y.0.clone() - BigInt::one().into(),
-        )
+    let assume_lt = |x: &XFocusedCond<'e>, y: &XFocusedCond<'e>| -> IsNotNeg {
+        IsNotNeg::new(y.1.clone() * x.0.clone() - x.1.clone() * y.0.clone() - BigInt::one().into())
     };
 
-    conds.iter().for_each(|LinearIsNotNeg { p }| {
+    conds.iter().for_each(|IsNotNeg { p }| {
         let coef = p.coefficient(&Some(x.clone()));
         if coef.is_zero() {
-            unrelated_conds.push(LinearIsNotNeg { p: p.clone() });
+            unrelated_conds.push(IsNotNeg { p: p.clone() });
         } else {
             let mut p = p.clone();
             p.set_coefficient(Some(x.clone()), BigInt::zero());
@@ -184,7 +82,11 @@ fn sum_linear_is_not_neg_pol<'e>(
                         .map(|x| (x.0, BigRational::from(x.1))),
                 ));
                 Function::new_if(
-                    LinearIsDivisor::is_divisor(trg.clone(), coef_x.clone()).into(),
+                    //LinearIsDivisor::is_divisor(trg.clone(), coef_x.clone()).into(),
+                    Condition::IsDivisor(IsDivisor {
+                        p: trg.clone(),
+                        c: coef_x.clone(),
+                    }),
                     Function::new_polynomial_as_int(
                         -pol.composite(x, &(trg_as_pol / BigRational::from(coef_x.clone()))),
                     ),
@@ -205,7 +107,11 @@ fn sum_linear_is_not_neg_pol<'e>(
             conds.push(assume_le(&l_conds[i], &r_conds[j]));
         }
         for ele in conds {
-            sum = Function::new_if(ele.into(), sum);
+            sum = Function::new_if(
+                Condition::IsNotNeg(IsNotNeg { p: ele.p }),
+                //ele.into(),
+                sum,
+            );
         }
         sums.push(sum);
     }
@@ -236,7 +142,11 @@ fn sum_linear_is_not_neg_pol<'e>(
                 ));
 
                 Function::new_if(
-                    LinearIsDivisor::is_divisor(trg.clone().into(), coef_x.clone()).into(),
+                    //                    LinearIsDivisor::is_divisor(trg.clone().into(), coef_x.clone()).into(),
+                    Condition::IsDivisor(IsDivisor {
+                        p: trg.clone(),
+                        c: coef_x.clone(),
+                    }),
                     Function::new_polynomial_as_int(
                         pol.composite(x, &(trg_as_pol / BigRational::from(coef_x.clone()))),
                     ),
@@ -245,7 +155,11 @@ fn sum_linear_is_not_neg_pol<'e>(
             .reduce(|x, y| (x + y).unwrap())
             .unwrap();
         for ele in conds {
-            sum = Function::new_if(ele.into(), sum);
+            sum = Function::new_if(
+                Condition::IsNotNeg(IsNotNeg { p: ele.p }),
+                //ele.into(),
+                sum,
+            );
         }
         sums.push(sum);
     }
@@ -254,7 +168,11 @@ fn sum_linear_is_not_neg_pol<'e>(
 
     for p in unrelated_conds.clone() {
         //TODO
-        sum = Function::new_if(p.into(), sum);
+        sum = Function::new_if(
+            Condition::IsNotNeg(IsNotNeg { p: p.p }),
+            //            p.into(),
+            sum,
+        );
     }
 
     Some(sum)
@@ -262,25 +180,25 @@ fn sum_linear_is_not_neg_pol<'e>(
 
 fn sum_polynomial_by_x<'e>(
     x: &Variable<'e>,
-    conds: &Vec<LinearCondition<'e>>,
+    conds: &Vec<Condition<'e>>,
     pol: &Polynomial<Variable<'e>, BigRational>,
 ) -> Option<Function<'e>> {
     let mut pol = pol.clone();
-    let mut unrelated_conds: Vec<LinearCondition> = vec![];
+    let mut unrelated_conds: Vec<Condition> = vec![];
     let mut is_not_neg_conds = vec![];
     let mut is_divisor_conds = vec![];
     for cond in conds {
         match cond {
-            LinearCondition::IsNotNeg(cond) => {
+            Condition::IsNotNeg(cond) => {
                 if cond.p.coefficient(&Some(x.clone())).is_zero() {
-                    unrelated_conds.push(LinearCondition::IsNotNeg(cond.clone()))
+                    unrelated_conds.push(Condition::IsNotNeg(cond.clone()))
                 } else {
                     is_not_neg_conds.push(cond.clone())
                 }
             }
-            LinearCondition::IsDivisor(cond) => {
+            Condition::IsDivisor(cond) => {
                 if cond.p.coefficient(&Some(x.clone())).is_zero() {
-                    unrelated_conds.push(LinearCondition::IsDivisor(cond.clone()))
+                    unrelated_conds.push(Condition::IsDivisor(cond.clone()))
                 } else {
                     is_divisor_conds.push(cond.clone())
                 }
@@ -298,10 +216,7 @@ fn sum_polynomial_by_x<'e>(
         let c = is_divisor_conds[i].c.clone();
         // c | coef_x * x + a
         let g = gcd(c.clone(), coef_x.clone());
-        unrelated_conds.push(LinearCondition::IsDivisor(LinearIsDivisor::is_divisor(
-            a.clone(),
-            g.clone(),
-        )));
+        unrelated_conds.push(Condition::IsDivisor(IsDivisor::new(a.clone(), g.clone())));
         let _cg = c.clone() / g.clone();
         // x -> cg' x - inv(coef_x/g, c/g) * a / g
         let x2_numer = LinearPolynomial::from([(Some(x.clone()), c.clone())])
@@ -360,14 +275,9 @@ fn sum_polynomial_by_x<'e>(
 
 fn decompose_sum_if_polynomial<'e>(
     f: &Function<'e>,
-) -> Option<
-    Vec<(
-        Vec<LinearCondition<'e>>,
-        Polynomial<Variable<'e>, BigRational>,
-    )>,
-> {
+) -> Option<Vec<(Vec<Condition<'e>>, Polynomial<Variable<'e>, BigRational>)>> {
     match f.data() {
-        FunctionData::PolynomialAsInt { p } => Some(vec![(vec![], p.clone())]),
+        FunctionData::Polynomial { p } => Some(vec![(vec![], p.clone())]),
         FunctionData::Add { l, r, .. } => {
             if let (Some(mut l), Some(mut r)) = (
                 decompose_sum_if_polynomial(l),
@@ -380,9 +290,7 @@ fn decompose_sum_if_polynomial<'e>(
             }
         }
         FunctionData::If { cond, f, .. } => {
-            if let (Some(cond), Some(mut f)) =
-                (to_linear_condition(cond), decompose_sum_if_polynomial(f))
-            {
+            if let Some(mut f) = decompose_sum_if_polynomial(f) {
                 f.iter_mut().for_each(|(x, _)| x.insert(0, cond.clone())); // TODO: fix vec.insert(0)
                 Some(f)
             } else {
@@ -393,9 +301,8 @@ fn decompose_sum_if_polynomial<'e>(
     }
 }
 
-pub struct LoopIfSumOptimizer {}
-impl<'e> Optimizer<'e> for LoopIfSumOptimizer {
-    fn optimize(&self, f: &Function<'e>) -> Option<Function<'e>> {
+pub fn loop_if_sum_optimize_rule<'e>() -> impl OptimizeRule<'e> {
+    |f: &Function<'e>| {
         let FunctionData::LoopSum { i, l, r, f, .. } = f.data() else {
             return None
         };
@@ -412,8 +319,8 @@ impl<'e> Optimizer<'e> for LoopIfSumOptimizer {
         let lcond = LinearPolynomial::from([(Some(i.clone()), BigInt::one())]) - lcond;
         let rcond = rcond - LinearPolynomial::from([(Some(i.clone()), BigInt::one())]);
 
-        let lcond = LinearCondition::IsNotNeg(LinearIsNotNeg::is_not_neg(lcond));
-        let rcond = LinearCondition::IsNotNeg(LinearIsNotNeg::is_not_neg(rcond));
+        let lcond = Condition::IsNotNeg(IsNotNeg::new(lcond));
+        let rcond = Condition::IsNotNeg(IsNotNeg::new(rcond));
 
         let sections: Vec<Option<Function<'e>>> = sections
             .into_iter()
