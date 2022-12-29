@@ -174,3 +174,20 @@ impl<'e> Mul for Function<'e> {
         Some(Function::new_mul(self, other))
     }
 }
+
+impl<'e> Function<'e> {
+    pub fn to_linear_polynomial(&self) -> Option<LinearPolynomial<Variable<'e>, BigInt>> {
+        let FunctionData::Polynomial { p } = self.data() else {
+            return None;
+        };
+        let Some(p) = p.to_linear_polynomial() else {
+            return None;
+        };
+        if p.iter().any(|(_, c)| !c.is_integer()) {
+            return None;
+        }
+        Some(LinearPolynomial::from_iter(
+            p.into_iter().map(|(p, c)| (p, c.to_integer())),
+        ))
+    }    
+}

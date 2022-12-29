@@ -1,9 +1,9 @@
-use num::{BigRational, Zero};
+use num::{BigRational, Zero, One};
 
 use crate::{
     //    constant::{Type},
     eval::quick_eval_constant,
-    function::{Function, FunctionData, FunctionDeclare},
+    function::{Function, FunctionData, FunctionDeclare, Condition, IsDivisor},
 };
 
 use self::replace::replace_all;
@@ -104,6 +104,32 @@ pub fn polynomial_optimize_rule<'e>() -> impl OptimizeRule<'e> {
         _ => None,
     }
 }
+
+pub fn obvious_if_optimize_rule<'e>() -> impl OptimizeRule<'e> {
+    |f: &Function<'e>| {
+        let FunctionData::If { cond, f: cf, .. } = f.data() else {
+            return None;
+        };
+        if let FunctionData::Polynomial { p } = cf.data() {
+            // ([x]0) => 0
+            if p.is_zero() {
+                return Some(cf.clone());
+            }
+        }
+        if let Condition::IsDivisor(IsDivisor{p, c}) = cond {
+            // [x % 1 == 0] is always true
+            if c.is_one() {
+                return Some(cf.clone());
+            }
+            // [0 % c == 0] is always true
+            if p.is_zero() {
+                return Some(cf.clone());
+            }
+        }
+        return None;
+    }
+}
+
 
 /*
 pub struct ObviousIfOptimizer {}

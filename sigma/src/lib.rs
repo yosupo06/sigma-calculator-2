@@ -1,7 +1,7 @@
 use function::FunctionDeclare;
 use optimizers::{
     binop_optimize_rule, constant_optimize_rule, fully_optimize,
-    loop_optimizer::loop_if_sum_optimize_rule, polynomial_optimize_rule, OptimizeRule,
+    loop_optimizer::loop_if_sum_optimize_rule, polynomial_optimize_rule, OptimizeRule, obvious_if_optimize_rule,
 };
 use parser::parse;
 use printer::cpp_print;
@@ -26,6 +26,7 @@ fn default_optimize<'e>(f: FunctionDeclare<'e>) -> FunctionDeclare<'e> {
         constant_optimize_rule()
             .or(binop_optimize_rule())
             .or(polynomial_optimize_rule())
+            .or(obvious_if_optimize_rule())
             .or(loop_if_sum_optimize_rule()),
     )
 }

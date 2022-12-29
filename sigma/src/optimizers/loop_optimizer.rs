@@ -9,18 +9,44 @@ use crate::{
 
 use super::OptimizeRule;
 
-fn to_linear_polynomial<'e>(f: &Function<'e>) -> Option<LinearPolynomial<Variable<'e>, BigInt>> {
-    match f.data() {
-        FunctionData::Polynomial { p } => {
-            if let Some(p) = p.to_linear_polynomial() {
-                Some(LinearPolynomial::from_iter(
-                    p.into_iter().map(|x| (x.0, x.1.to_integer())),
-                ))
-            } else {
-                None
-            }
+pub fn loop_if_sum_optimize_rule<'e>() -> impl OptimizeRule<'e> {
+    |f: &Function<'e>| {
+        let FunctionData::LoopSum { i, l, r, f, .. } = f.data() else {
+            return None
+        };
+        let Some(sections) = decompose_sum_if_polynomial(f) else {
+            return None
+        };
+        let Some(lcond) = l.to_linear_polynomial() else {
+            return None
+        };
+        let Some(rcond) = r.to_linear_polynomial() else {
+            return None
+        };
+
+        let lcond = LinearPolynomial::from([(Some(i.clone()), BigInt::one())]) - lcond;
+        let rcond = rcond - LinearPolynomial::from([(Some(i.clone()), BigInt::one())]);
+
+        let lcond = Condition::IsNotNeg(IsNotNeg::new(lcond));
+        let rcond = Condition::IsNotNeg(IsNotNeg::new(rcond));
+
+        let sections: Vec<Option<Function<'e>>> = sections
+            .into_iter()
+            .map(|(mut conds, p)| {
+                // TODO: fix vec.insert(0)
+                conds.insert(0, lcond.clone());
+                conds.insert(0, rcond.clone());
+                sum_polynomial_by_x(i, &conds, &p)
+            })
+            .collect();
+
+        if sections.iter().any(|x| x.is_none()) {
+            return None;
         }
-        _ => None,
+        sections
+            .into_iter()
+            .reduce(|x, y| Some((x.unwrap() + y.unwrap()).unwrap()))
+            .unwrap()
     }
 }
 
@@ -298,46 +324,5 @@ fn decompose_sum_if_polynomial<'e>(
             }
         }
         _ => None,
-    }
-}
-
-pub fn loop_if_sum_optimize_rule<'e>() -> impl OptimizeRule<'e> {
-    |f: &Function<'e>| {
-        let FunctionData::LoopSum { i, l, r, f, .. } = f.data() else {
-            return None
-        };
-        let Some(sections) = decompose_sum_if_polynomial(f) else {
-            return None
-        };
-        let Some(lcond) = to_linear_polynomial(l) else {
-            return None
-        };
-        let Some(rcond) = to_linear_polynomial(r) else {
-            return None
-        };
-
-        let lcond = LinearPolynomial::from([(Some(i.clone()), BigInt::one())]) - lcond;
-        let rcond = rcond - LinearPolynomial::from([(Some(i.clone()), BigInt::one())]);
-
-        let lcond = Condition::IsNotNeg(IsNotNeg::new(lcond));
-        let rcond = Condition::IsNotNeg(IsNotNeg::new(rcond));
-
-        let sections: Vec<Option<Function<'e>>> = sections
-            .into_iter()
-            .map(|(mut conds, p)| {
-                // TODO: fix vec.insert(0)
-                conds.insert(0, lcond.clone());
-                conds.insert(0, rcond.clone());
-                sum_polynomial_by_x(i, &conds, &p)
-            })
-            .collect();
-
-        if sections.iter().any(|x| x.is_none()) {
-            return None;
-        }
-        sections
-            .into_iter()
-            .reduce(|x, y| Some((x.unwrap() + y.unwrap()).unwrap()))
-            .unwrap()
     }
 }
