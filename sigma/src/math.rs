@@ -1,9 +1,4 @@
-use num::{
-    integer::{gcd, lcm},
-    BigInt, BigRational, Integer, One, Signed, Zero,
-};
-
-use crate::{polynomials::linear_polynomial::LinearPolynomial, variable::Variable};
+use num::{integer::gcd, BigInt, BigRational, Integer, One, Zero};
 
 pub fn mod_inverse(a: BigInt, b: BigInt) -> BigInt {
     assert_eq!(BigInt::one(), gcd(a.clone(), b.clone()));
@@ -44,27 +39,6 @@ pub fn faulhaber(n: usize) -> Vec<BigRational> {
             }
         }))
         .collect()
-}
-
-impl<'e> LinearPolynomial<Variable<'e>, BigRational> {
-    pub fn numer_gcd(&self) -> BigInt {
-        // some x s.t. (evaluated p) is integer => x | (evaluated p)
-        if self.is_zero() {
-            return BigInt::one();
-        }
-
-        let denom_lcm = self
-            .iter()
-            .map(|(_, c)| c.denom().clone())
-            .reduce(lcm)
-            .unwrap();
-
-        self.iter()
-            .map(|(_, c)| c.numer() * denom_lcm.clone() / c.denom())
-            .reduce(gcd)
-            .unwrap()
-            .abs()
-    }
 }
 
 #[cfg(test)]

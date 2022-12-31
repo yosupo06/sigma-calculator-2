@@ -1,9 +1,9 @@
-use num::{BigRational, Zero, One};
+use num::{BigRational, One, Zero};
 
 use crate::{
     //    constant::{Type},
     eval::quick_eval_constant,
-    function::{Function, FunctionData, FunctionDeclare, Condition, IsDivisor},
+    function::{Condition, Function, FunctionData, FunctionDeclare, IsDivisor},
 };
 
 use self::replace::replace_all;
@@ -38,7 +38,7 @@ where
     P2: OptimizeRule<'e>,
 {
     fn optimize(&mut self, f: &Function<'e>) -> Option<Function<'e>> {
-        self.0.optimize(f).or(self.1.optimize(f))
+        self.0.optimize(f).or_else(|| self.1.optimize(f))
     }
 }
 
@@ -47,11 +47,7 @@ pub fn constant_optimize_rule<'e>() -> impl OptimizeRule<'e> {
         if matches!(f.data(), FunctionData::Polynomial { .. }) {
             return None;
         }
-        if let Some(x) = quick_eval_constant(f) {
-            Some(Function::new_polynomial_as_int(BigRational::from(x).into()))
-        } else {
-            None
-        }
+        quick_eval_constant(f).map(|x| Function::new_polynomial_as_int(BigRational::from(x).into()))
     }
 }
 
@@ -116,7 +112,7 @@ pub fn obvious_if_optimize_rule<'e>() -> impl OptimizeRule<'e> {
                 return Some(cf.clone());
             }
         }
-        if let Condition::IsDivisor(IsDivisor{p, c}) = cond {
+        if let Condition::IsDivisor(IsDivisor { p, c }) = cond {
             // [x % 1 == 0] is always true
             if c.is_one() {
                 return Some(cf.clone());
@@ -126,85 +122,9 @@ pub fn obvious_if_optimize_rule<'e>() -> impl OptimizeRule<'e> {
                 return Some(cf.clone());
             }
         }
-        return None;
-    }
-}
-
-
-/*
-pub struct ObviousIfOptimizer {}
-impl<'e> Optimizer<'e> for ObviousIfOptimizer {
-    fn optimize(&self, f: &Function<'e>) -> Option<Function<'e>> {
-        if let FunctionData::If { cond, f: cf, .. } = f.data() {
-            if let FunctionData::Bool { f: cond_f } = cond.data() {
-                if *cond_f {
-                    return Some(cf.clone());
-                } else {
-                    match cf.return_type() {
-                        Type::Integer => {
-                            return Some(Function::new_polynomial_as_int(Default::default()))
-                        }
-                        _ => unimplemented!(),
-                    }
-                }
-            }
-
-            if let Some(x) = quick_eval_constant(cf) {
-                // if [xxx] 0 => 0
-                if x == Constant::zero(cf.return_type()) {
-                    return Some(cf.clone());
-                }
-            }
-        }
-        None
-    }
-}*/
-/*
-pub struct SimplifyConditionOptimizer {}
-impl<'e> Optimizer<'e> for SimplifyConditionOptimizer {
-    fn optimize(&self, f: &Function<'e>) -> Option<Function<'e>> {
-        if let FunctionData::IsDivisor { l, r } = f.data() {
-            if r.is_one() {
-                return Some(Function::new_bool(true));
-            }
-            if l.is_zero() {
-                return Some(Function::new_bool(true));
-            }
-            let p2 = LinearPolynomial::from_iter(l.iter().map(|(m, c)| {
-                if c.is_integer() {
-                    (m.clone(), BigRational::from((c.to_integer() % r + r) % r))
-                } else {
-                    (m.clone(), c.clone())
-                }
-            }));
-
-            if l != &p2 {
-                return Some(Function::new_is_divisor(p2, r.clone()));
-            }
-
-            let g = l.numer_gcd();
-            if g != BigInt::one() {
-                return Some(Function::new_is_divisor(
-                    (l.clone() / BigRational::from(g.clone())).into(),
-                    r.clone() / gcd(r.clone(), g),
-                ));
-            }
-        }
-        if let FunctionData::IsNotNeg { p } = f.data() {
-            if p.is_zero() {
-                return Some(Function::new_bool(true));
-            }
-            let g = p.numer_gcd();
-            if g != BigInt::one() {
-                return Some(Function::new_is_not_neg(
-                    p.clone() / BigRational::from(g.clone()),
-                ));
-            }
-        }
         None
     }
 }
-*/
 
 pub fn fully_optimize<'e>(
     mut f: FunctionDeclare<'e>,

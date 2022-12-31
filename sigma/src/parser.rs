@@ -1,26 +1,25 @@
 use std::{char, collections::HashMap, str::FromStr};
 
 use combine::{
-    attempt, between, chainl1, many, many1, optional,
+    attempt, between, chainl1, eof, many, many1, optional,
     parser::char::{alpha_num, digit, letter, spaces, string},
     sep_by, Parser, Stream,
 };
 use num::{BigInt, BigRational, One};
 
 use crate::{
-    //    constant::Type,
     function::{Condition, Function, FunctionDeclare, IsDivisor, IsNotNeg},
     polynomials::{linear_polynomial::LinearPolynomial, polynomial::Polynomial},
     variable::{Variable, VariableManager},
 };
 
-struct FunctionExpr {
+pub struct FunctionExpr {
     name: String,
     args: Vec<String>,
     f: Box<Expr>,
 }
 impl FunctionExpr {
-    fn to_functions<'e>(&self, gen: &'e VariableManager) -> Option<FunctionDeclare<'e>> {
+    pub fn to_functions<'e>(&self, gen: &'e VariableManager) -> Option<FunctionDeclare<'e>> {
         let mut vars = HashMap::new();
         let args = self
             .args
@@ -31,16 +30,16 @@ impl FunctionExpr {
                 var
             })
             .collect::<Vec<_>>();
-        if let Some(f) = self.f.to_functions(gen, &vars) {
-            Some(FunctionDeclare {
-                name: self.name.clone(),
-                args,
-                body: f,
-            })
-        } else {
-            None
-        }
+        self.f.to_functions(gen, &vars).map(|f| FunctionDeclare {
+            name: self.name.clone(),
+            args,
+            body: f,
+        })
     }
+}
+
+pub fn parse<'e>(source: &str) -> Result<FunctionExpr, impl std::error::Error> {
+    function().parse(source).map(|x| x.0)
 }
 
 enum Expr {
@@ -259,14 +258,6 @@ impl Expr {
     }
 }
 
-pub fn parse<'e>(source: &str, gen: &'e VariableManager) -> Option<FunctionDeclare<'e>> {
-    let result = function().parse(source).map(|x| x.0.to_functions(gen));
-    match result {
-        Ok(v) => v,
-        _ => None,
-    }
-}
-
 fn op<I>(s: &'static str) -> impl Parser<I, Output = String>
 where
     I: Stream<Token = char>,
@@ -289,17 +280,19 @@ where
     I: Stream<Token = char>,
 {
     (
+        spaces(),
         variable_token(),
         op("("),
         sep_by(variable_token(), op(",")),
         op(")"),
         op("="),
         expr(),
+        eof(),
     )
         .map(|t| FunctionExpr {
-            name: t.0,
-            args: t.2,
-            f: Box::new(t.5),
+            name: t.1,
+            args: t.3,
+            f: Box::new(t.6),
         })
 }
 
@@ -457,5 +450,22 @@ parser! {
             int_term,
             variable_term
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse;
+
+    #[test]
+    fn parse_extra_space() {
+        assert!(parse(&"f()=1").is_ok());
+        assert!(parse(&" f()=1").is_ok());
+        assert!(parse(&"f()=1 ").is_ok());
+        assert!(parse(&" f()=1 ").is_ok());
+    }
+    #[test]
+    fn parse_extra_token() {
+        assert!(parse(&"f()=1 a").is_err());
     }
 }

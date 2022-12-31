@@ -1,7 +1,8 @@
 use function::FunctionDeclare;
 use optimizers::{
     binop_optimize_rule, constant_optimize_rule, fully_optimize,
-    loop_optimizer::loop_if_sum_optimize_rule, polynomial_optimize_rule, OptimizeRule, obvious_if_optimize_rule,
+    loop_optimizer::loop_if_sum_optimize_rule, obvious_if_optimize_rule, polynomial_optimize_rule,
+    OptimizeRule,
 };
 use parser::parse;
 use printer::cpp_print;
@@ -31,11 +32,21 @@ fn default_optimize<'e>(f: FunctionDeclare<'e>) -> FunctionDeclare<'e> {
     )
 }
 
+pub fn to_function<'e>(
+    source: &str,
+    var_manager: &'e VariableManager,
+) -> Option<FunctionDeclare<'e>> {
+    let result = parse(source).map(|x| x.to_functions(var_manager));
+    match result {
+        Ok(v) => v,
+        _ => None,
+    }
+}
+
 #[wasm_bindgen]
 pub fn to_cpp_code(source: &str) -> String {
     let var_manager = VariableManager::default();
-
-    let f = parse(source, &var_manager);
+    let f = to_function(source, &var_manager);
 
     if f.is_none() {
         panic!("Failed to parse");
@@ -53,9 +64,9 @@ mod tests {
     use std::str::FromStr;
 
     use crate::function::FunctionDeclare;
-    use crate::{eval::eval_function, parser::parse, variable::VariableManager};
+    use crate::{eval::eval_function, variable::VariableManager};
 
-    use crate::default_optimize;
+    use crate::{default_optimize, to_function};
     use num::BigInt;
 
     fn test_eval(f: &FunctionDeclare, vals: &Vec<BigInt>, expect: &BigInt) {
@@ -65,7 +76,7 @@ mod tests {
 
     fn test_function(s: &str, vals: Vec<BigInt>, expect: BigInt) {
         let var_manager = VariableManager::default();
-        let f = parse(s, &var_manager);
+        let f = to_function(s, &var_manager);
         assert!(f.is_some());
         let f = f.unwrap();
 
@@ -76,7 +87,7 @@ mod tests {
 
     fn test_opt_function(s: &str, vals: Vec<BigInt>, expect: BigInt) {
         let var_manager = VariableManager::default();
-        let f = parse(s, &var_manager);
+        let f = to_function(s, &var_manager);
         assert!(f.is_some());
         let f = f.unwrap();
 
@@ -86,7 +97,7 @@ mod tests {
 
     fn test_compare_opt(s: &str, vals: Vec<BigInt>) {
         let var_manager = VariableManager::default();
-        let f = parse(s, &var_manager);
+        let f = to_function(s, &var_manager);
         assert!(f.is_some());
         let f = f.unwrap();
 

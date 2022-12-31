@@ -60,12 +60,6 @@ pub struct VariableManager {
     names: Cell<Vec<String>>,
 }
 impl VariableManager {
-    /*    pub fn new() -> VariableManager {
-        VariableManager {
-            next_id: Cell::new(0),
-            names: Cell::new(Vec::new()),
-        }
-    }*/
     pub fn new_var(&self, name: String) -> Variable {
         let id = self.next_id.get();
         self.next_id.set(id + 1);

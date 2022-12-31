@@ -14,9 +14,9 @@ where
             if l2.is_some() || r2.is_some() || f2.is_some() {
                 Some(Function::new_loop_sum(
                     i.clone(),
-                    l2.unwrap_or(l.clone()),
-                    r2.unwrap_or(r.clone()),
-                    f2.unwrap_or(cf.clone()),
+                    l2.unwrap_or_else(|| l.clone()),
+                    r2.unwrap_or_else(|| r.clone()),
+                    f2.unwrap_or_else(|| cf.clone()),
                 ))
             } else {
                 None
@@ -26,7 +26,10 @@ where
             let f2 = replace_all_internal(f, rule);
 
             if f2.is_some() {
-                Some(Function::new_if(cond.clone(), f2.unwrap_or(f.clone())))
+                Some(Function::new_if(
+                    cond.clone(),
+                    f2.unwrap_or_else(|| f.clone()),
+                ))
             } else {
                 None
             }
@@ -37,8 +40,8 @@ where
 
             if l2.is_some() || r2.is_some() {
                 Some(Function::new_add(
-                    l2.unwrap_or(l.clone()),
-                    r2.unwrap_or(r.clone()),
+                    l2.unwrap_or_else(|| l.clone()),
+                    r2.unwrap_or_else(|| r.clone()),
                 ))
             } else {
                 None
@@ -50,8 +53,8 @@ where
 
             if l2.is_some() || r2.is_some() {
                 Some(Function::new_mul(
-                    l2.unwrap_or(l.clone()),
-                    r2.unwrap_or(r.clone()),
+                    l2.unwrap_or_else(|| l.clone()),
+                    r2.unwrap_or_else(|| r.clone()),
                 ))
             } else {
                 None

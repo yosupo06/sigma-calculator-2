@@ -1,11 +1,9 @@
-//use crate::sets_intersection;
-
 use std::ops::{Add, Deref, Mul, Sub};
 use std::rc::Rc;
 
+use num::integer::gcd;
 use num::{zero, BigInt, BigRational, One, Zero};
 
-//use crate::constant::Type;
 use crate::polynomials::linear_polynomial::LinearPolynomial;
 use crate::polynomials::polynomial::Polynomial;
 use crate::variable::Variable;
@@ -20,6 +18,12 @@ pub struct FunctionDeclare<'e> {
 #[derive(Clone, Debug)]
 pub struct Function<'e>(Rc<FunctionData<'e>>);
 
+impl<'e> LinearPolynomial<Variable<'e>, BigInt> {
+    pub fn coefficient_gcd(&self) -> BigInt {
+        self.iter().fold(BigInt::zero(), |x, y| gcd(x, y.1.clone()))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct IsNotNeg<'e> {
     pub p: LinearPolynomial<Variable<'e>, BigInt>,
@@ -30,8 +34,11 @@ impl<'e> IsNotNeg<'e> {
             return Self { p: zero() };
         }
 
-        // TODO: gcd
-        Self { p }
+        let g = p.coefficient_gcd();
+
+        Self {
+            p: LinearPolynomial::from_iter(p.into_iter().map(|(m, c)| (m, c / g.clone()))),
+        }
     }
 
     // x <- f / denom
@@ -60,9 +67,12 @@ impl<'e> IsDivisor<'e> {
                 c: BigInt::one(),
             };
         }
+        let g = p.coefficient_gcd();
 
-        // TODO: gcd
-        IsDivisor { p, c }
+        Self {
+            p: LinearPolynomial::from_iter(p.into_iter().map(|(m, c)| (m, c / g.clone()))),
+            c: c.clone() / gcd(c, g),
+        }
     }
 
     // x <- f / denom
@@ -189,5 +199,5 @@ impl<'e> Function<'e> {
         Some(LinearPolynomial::from_iter(
             p.into_iter().map(|(p, c)| (p, c.to_integer())),
         ))
-    }    
+    }
 }
