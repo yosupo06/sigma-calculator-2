@@ -69,16 +69,20 @@ where
 impl<K, V> FromIterator<(Option<K>, V)> for LinearPolynomial<K, V>
 where
     K: Eq + Hash,
+    V: Zero,
 {
     fn from_iter<I: IntoIterator<Item = (Option<K>, V)>>(iter: I) -> Self {
-        LinearPolynomial {
-            v: HashMap::from_iter(iter),
+        let mut p = LinearPolynomial::default();
+        for ele in iter {
+            p.set_coefficient(ele.0, ele.1);
         }
+        p
     }
 }
 impl<K, V, const N: usize> From<[(Option<K>, V); N]> for LinearPolynomial<K, V>
 where
     K: Eq + Hash,
+    V: Zero,
 {
     fn from(arr: [(Option<K>, V); N]) -> Self {
         Self::from_iter(arr)

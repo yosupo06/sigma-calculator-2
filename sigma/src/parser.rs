@@ -1,4 +1,4 @@
-use std::{char, collections::HashMap, str::FromStr};
+use std::{char, collections::HashMap, error::Error, fmt, str::FromStr};
 
 use combine::{
     attempt, between, chainl1, eof, many, many1, optional,
@@ -13,13 +13,27 @@ use crate::{
     variable::{Variable, VariableManager},
 };
 
+#[derive(Debug, Clone)]
+pub struct ConvertError(String);
+
+impl fmt::Display for ConvertError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "converting error from expr -> function: {}", self.0)
+    }
+}
+
+impl Error for ConvertError {}
+
 pub struct FunctionExpr {
     name: String,
     args: Vec<String>,
     f: Box<Expr>,
 }
 impl FunctionExpr {
-    pub fn to_functions<'e>(&self, gen: &'e VariableManager) -> Option<FunctionDeclare<'e>> {
+    pub fn to_functions<'e>(
+        &self,
+        gen: &'e VariableManager,
+    ) -> Result<FunctionDeclare<'e>, ConvertError> {
         let mut vars = HashMap::new();
         let args = self
             .args
@@ -78,6 +92,10 @@ enum Expr {
         l: Box<Self>,
         r: Box<Self>,
     },
+    Eq {
+        l: Box<Self>,
+        r: Box<Self>,
+    },
     IsDivisor {
         l: Box<Self>,
         r: Box<Self>,
@@ -98,60 +116,50 @@ impl Expr {
         &self,
         gen: &'e VariableManager,
         vars: &HashMap<String, Variable<'e>>,
-    ) -> Option<LinearPolynomial<Variable<'e>, BigInt>> {
+    ) -> Result<LinearPolynomial<Variable<'e>, BigInt>, ConvertError> {
         match self {
-            Self::Int { v } => Some(LinearPolynomial::from(BigInt::from(v.clone()))),
+            Self::Int { v } => Ok(LinearPolynomial::from(v.clone())),
             Self::Variable { name } => {
                 if let Some(v) = vars.get(name) {
-                    Some(LinearPolynomial::from([(Some(v.clone()), BigInt::one())]))
+                    Ok(LinearPolynomial::from([(Some(v.clone()), BigInt::one())]))
                 } else {
-                    None
+                    Err(ConvertError(format!("unknown variable: {}", name)))
                 }
             }
             Self::Add { l, r } => {
-                if let (Some(l), Some(r)) = (
-                    l.to_linear_polynomial(gen, vars),
-                    r.to_linear_polynomial(gen, vars),
-                ) {
-                    Some(l + r)
-                } else {
-                    None
-                }
+                let (l, r) = (
+                    l.to_linear_polynomial(gen, vars)?,
+                    r.to_linear_polynomial(gen, vars)?,
+                );
+                Ok(l + r)
             }
             Self::Sub { l, r } => {
-                if let (Some(l), Some(r)) = (
-                    l.to_linear_polynomial(gen, vars),
-                    r.to_linear_polynomial(gen, vars),
-                ) {
-                    Some(l - r)
-                } else {
-                    None
-                }
+                let (l, r) = (
+                    l.to_linear_polynomial(gen, vars)?,
+                    r.to_linear_polynomial(gen, vars)?,
+                );
+                Ok(l - r)
             }
             Self::Mul { l, r } => {
-                if let (Some(l), Some(r)) = (
-                    l.to_linear_polynomial(gen, vars),
-                    r.to_linear_polynomial(gen, vars),
-                ) {
-                    if let Some(l) = l.to_constant() {
-                        Some(r * l)
-                    } else if let Some(r) = r.to_constant() {
-                        Some(l * r)
-                    } else {
-                        None
-                    }
+                let (l, r) = (
+                    l.to_linear_polynomial(gen, vars)?,
+                    r.to_linear_polynomial(gen, vars)?,
+                );
+
+                if let Some(l) = l.to_constant() {
+                    Ok(r * l)
+                } else if let Some(r) = r.to_constant() {
+                    Ok(l * r)
                 } else {
-                    None
+                    Err(ConvertError(
+                        "(linear pol) * (linear pol) might not be (linear pol)".to_string(),
+                    ))
                 }
             }
-            Self::Neg { v } => {
-                if let Some(p) = v.to_linear_polynomial(gen, vars) {
-                    Some(-p)
-                } else {
-                    None
-                }
-            }
-            _ => None,
+            Self::Neg { v } => Ok(-(v.to_linear_polynomial(gen, vars)?)),
+            _ => Err(ConvertError(
+                "invalid expr for linear polynomial".to_string(),
+            )),
         }
     }
 
@@ -159,27 +167,23 @@ impl Expr {
         &self,
         gen: &'e VariableManager,
         vars: &HashMap<String, Variable<'e>>,
-    ) -> Option<Condition<'e>> {
+    ) -> Result<Condition<'e>, ConvertError> {
         match self {
             Self::IsDivisor { l, r } => {
-                if let (Some(l), Some(r)) = (l.to_int(gen, vars), r.to_linear_polynomial(gen, vars))
-                {
-                    Some(Condition::IsDivisor(IsDivisor::new(r, l)))
-                } else {
-                    None
-                }
+                let Some(l) = l.to_int(gen, vars) else {
+                    return Err(ConvertError("left of is_divisor must be constant".to_string()));
+                };
+                let r = r.to_linear_polynomial(gen, vars)?;
+                Ok(Condition::IsDivisor(IsDivisor::new(r, l)))
             }
             Self::LessEq { l, r } => {
-                if let (Some(l), Some(r)) = (
-                    l.to_linear_polynomial(gen, vars),
-                    r.to_linear_polynomial(gen, vars),
-                ) {
-                    Some(Condition::IsNotNeg(IsNotNeg::new(r - l)))
-                } else {
-                    None
-                }
+                let (l, r) = (
+                    l.to_linear_polynomial(gen, vars)?,
+                    r.to_linear_polynomial(gen, vars)?,
+                );
+                Ok(Condition::IsNotNeg(IsNotNeg::new(r - l)))
             }
-            _ => None,
+            _ => Err(ConvertError("invalid expr for condition".to_string())),
         }
     }
 
@@ -187,73 +191,58 @@ impl Expr {
         &self,
         gen: &'e VariableManager,
         vars: &HashMap<String, Variable<'e>>,
-    ) -> Option<Function<'e>> {
+    ) -> Result<Function<'e>, ConvertError> {
         match self {
-            Self::Int { v } => Some(Function::new_polynomial_as_int(Polynomial::from(
+            Self::Int { v } => Ok(Function::new_polynomial_as_int(Polynomial::from(
                 BigRational::from(v.clone()),
             ))),
             Self::Variable { name } => {
                 if let Some(v) = vars.get(name) {
-                    Some(Function::new_polynomial_as_int(Polynomial::from([(
+                    Ok(Function::new_polynomial_as_int(Polynomial::from([(
                         v.clone().into(),
                         BigRational::one(),
                     )])))
                 } else {
-                    None
+                    Err(ConvertError(format!("unknown variable: {}", name)))
                 }
             }
-            Self::Add { l, r } => {
-                if let (Some(l), Some(r)) = (l.to_functions(gen, vars), r.to_functions(gen, vars)) {
-                    l + r
-                } else {
-                    None
-                }
-            }
-            Self::Sub { l, r } => {
-                if let (Some(l), Some(r)) = (l.to_functions(gen, vars), r.to_functions(gen, vars)) {
-                    l - r
-                } else {
-                    None
-                }
-            }
-            Self::Mul { l, r } => {
-                if let (Some(l), Some(r)) = (l.to_functions(gen, vars), r.to_functions(gen, vars)) {
-                    l * r
-                } else {
-                    None
-                }
-            }
-            Self::Neg { v } => {
-                if let Some(v) = v.to_functions(gen, vars) {
-                    Some(Function::new_neg(v))
-                } else {
-                    None
-                }
-            }
+            Self::Add { l, r } => Ok(Function::new_add(
+                l.to_functions(gen, vars)?,
+                r.to_functions(gen, vars)?,
+            )),
+            Self::Sub { l, r } => Ok(Function::new_add(
+                l.to_functions(gen, vars)?,
+                Function::new_neg(r.to_functions(gen, vars)?),
+            )),
+            Self::Mul { l, r } => Ok(Function::new_mul(
+                l.to_functions(gen, vars)?,
+                r.to_functions(gen, vars)?,
+            )),
+            Self::Neg { v } => Ok(Function::new_neg(v.to_functions(gen, vars)?)),
             Self::Sum { v, l, r, f } => {
-                if let (Some(l), Some(r)) = (l.to_functions(gen, vars), r.to_functions(gen, vars)) {
-                    let mut vars = vars.clone();
-                    let var = gen.new_var(v.clone());
-                    vars.insert(v.clone(), var.clone());
-                    if let Some(f) = f.to_functions(gen, &vars) {
-                        Some(Function::new_loop_sum(var, l, r, f))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
+                let l = l.to_functions(gen, vars)?;
+                let r = r.to_functions(gen, vars)?;
+                let mut vars = vars.clone();
+                let var = gen.new_var(v.clone());
+                vars.insert(v.clone(), var.clone());
+                let f = f.to_functions(gen, &vars)?;
+
+                Ok(Function::new_loop_sum(var, l, r, f))
             }
             Self::If { cond, f } => {
-                if let (Some(cond), Some(f)) =
-                    (cond.to_condition(gen, vars), f.to_functions(gen, vars))
-                {
-                    Some(Function::new_if(cond, f))
-                } else {
-                    None
+                let f = f.to_functions(gen, vars)?;
+
+                if let Self::Eq { l, r } = cond.as_ref() {
+                    let l = l.to_linear_polynomial(gen, vars)?;
+                    let r = r.to_linear_polynomial(gen, vars)?;
+                    return Ok(Function::new_if(
+                        Condition::IsNotNeg(IsNotNeg::new(r.clone() - l.clone())),
+                        Function::new_if(Condition::IsNotNeg(IsNotNeg::new(l - r)), f),
+                    ));
                 }
+                Ok(Function::new_if(cond.to_condition(gen, vars)?, f))
             }
-            _ => None,
+            _ => Err(ConvertError("invalid expr for function".to_string())),
         }
     }
 }
@@ -398,6 +387,7 @@ parser! {
             op("<="),
             op(">"),
             op("<"),
+            op("="),
             op("|")
         );
 
@@ -410,6 +400,7 @@ parser! {
                 match op.as_str() {
                     ">=" => Expr::LessEq { l: Box::new(r), r: Box::new(l) },
                     "<=" => Expr::LessEq { l: Box::new(l), r: Box::new(r) },
+                    "=" => Expr::Eq { l: Box::new(l), r: Box::new(r) },
                     "|" => Expr::IsDivisor { l: Box::new(l), r: Box::new(r) },
                     _ => todo!()
                 }

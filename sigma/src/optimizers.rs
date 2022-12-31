@@ -1,9 +1,9 @@
-use num::{BigRational, One, Zero};
+use num::{BigRational, One, Signed, Zero};
 
 use crate::{
     //    constant::{Type},
     eval::quick_eval_constant,
-    function::{Condition, Function, FunctionData, FunctionDeclare, IsDivisor},
+    function::{Condition, Function, FunctionData, FunctionDeclare, IsDivisor, IsNotNeg},
 };
 
 use self::replace::replace_all;
@@ -120,6 +120,17 @@ pub fn obvious_if_optimize_rule<'e>() -> impl OptimizeRule<'e> {
             // [0 % c == 0] is always true
             if p.is_zero() {
                 return Some(cf.clone());
+            }
+        }
+        if let Condition::IsNotNeg(IsNotNeg { p }) = cond {
+            if let Some(c) = p.to_constant() {
+                if c.is_negative() {
+                    // [neg >= 0] is always false
+                    return Some(Function::new_polynomial_as_int(BigRational::zero().into()));
+                } else {
+                    // [(not neg) >= 0] is always true
+                    return Some(cf.clone());
+                }
             }
         }
         None

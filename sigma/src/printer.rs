@@ -56,30 +56,19 @@ fn print_linear_polynomial<'e>(p: &LinearPolynomial<Variable<'e>, BigInt>) -> St
     if p.is_zero() {
         return "0".to_string();
     }
-    let g = p
-        .iter()
-        .map(|(_, c)| c.clone())
-        .reduce(|x, y| lcm(x, y))
-        .unwrap();
-
     let result = p
         .iter()
         .map(|(v, c)| {
-            let coef = c * g.clone();
             if let Some(v) = v {
-                format!("{}*{}", coef, v.name())
+                format!("{}*{}", c, v.name())
             } else {
-                format!("Int({})", coef)
+                format!("Int({})", c)
             }
         })
         .collect::<Vec<String>>()
         .join("+");
 
-    if g.is_one() {
-        result
-    } else {
-        format!("({}) / {}", result, g)
-    }
+    result
 }
 
 fn to_cpp_source_lines<'e>(f: &Function<'e>) -> Vec<String> {

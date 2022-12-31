@@ -2,7 +2,7 @@ use std::ops::{Add, Deref, Mul, Sub};
 use std::rc::Rc;
 
 use num::integer::gcd;
-use num::{zero, BigInt, BigRational, One, Zero};
+use num::{zero, BigInt, BigRational, One, Signed, Zero};
 
 use crate::polynomials::linear_polynomial::LinearPolynomial;
 use crate::polynomials::polynomial::Polynomial;
@@ -61,13 +61,23 @@ impl<'e> IsDivisor<'e> {
     pub fn new(p: LinearPolynomial<Variable<'e>, BigInt>, c: BigInt) -> Self {
         assert_ne!(c, BigInt::zero());
 
+        let p = LinearPolynomial::from_iter(
+            p.into_iter()
+                .map(|(m, c2)| (m, (c2 % c.clone() + c.clone()) % c.clone())),
+        );
+
         if p.is_zero() {
             return IsDivisor {
                 p: Default::default(),
                 c: BigInt::one(),
             };
         }
+
         let g = p.coefficient_gcd();
+
+        assert_ne!(g, BigInt::zero(), "{:?}", p);
+
+        assert!(!p.constant().is_negative());
 
         Self {
             p: LinearPolynomial::from_iter(p.into_iter().map(|(m, c)| (m, c / g.clone()))),

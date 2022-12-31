@@ -112,10 +112,7 @@ fn sum_linear_is_not_neg_pol<'e>(
                         .map(|x| (x.0, BigRational::from(x.1))),
                 ));
                 Function::new_if(
-                    Condition::IsDivisor(IsDivisor {
-                        p: trg.clone(),
-                        c: coef_x.clone(),
-                    }),
+                    Condition::IsDivisor(IsDivisor::new(trg.clone(), coef_x.clone())),
                     Function::new_polynomial_as_int(
                         -pol.composite(x, &(trg_as_pol / BigRational::from(coef_x.clone()))),
                     ),
@@ -157,10 +154,7 @@ fn sum_linear_is_not_neg_pol<'e>(
                 ));
 
                 Function::new_if(
-                    Condition::IsDivisor(IsDivisor {
-                        p: trg.clone(),
-                        c: coef_x.clone(),
-                    }),
+                    Condition::IsDivisor(IsDivisor::new(trg.clone(), coef_x.clone())),
                     Function::new_polynomial_as_int(
                         pol.composite(x, &(trg_as_pol / BigRational::from(coef_x.clone()))),
                     ),
