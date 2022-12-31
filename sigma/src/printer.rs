@@ -60,7 +60,11 @@ fn print_linear_polynomial<'e>(p: &LinearPolynomial<Variable<'e>, BigInt>) -> St
         .iter()
         .map(|(v, c)| {
             if let Some(v) = v {
-                format!("{}*{}", c, v.name())
+                if c.is_one() {
+                    format!("{}", v.name())
+                } else {
+                    format!("{}*{}", c, v.name())
+                }
             } else {
                 format!("Int({})", c)
             }
