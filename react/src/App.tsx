@@ -1,4 +1,4 @@
-import { Accordion, AccordionDetails, AccordionSummary, Box, Button, CssBaseline, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Box, Button, CssBaseline, Link, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
 import NavBar from "./components/NavBar";
 import React, { useState } from "react";
 import { to_cpp_code } from "../sigma";
@@ -17,7 +17,7 @@ const App = () => {
   };
 
   const samples = [
-    {name: "ABC269 F", data: "f(M, A, B, C, D)=$(i=A..B)$(j=C..D)[2|i+j]((i-1)*M+j)"}
+    { name: "ABC269 F", url: "https://atcoder.jp/contests/abc269/tasks/abc269_f", data: "f(M, A, B, C, D)=$(i=A..B)$(j=C..D)[2|i+j]((i-1)*M+j)"}
   ]
   return (
     <React.Fragment>
@@ -50,8 +50,8 @@ const App = () => {
                     <TableBody>
                       {samples.map((row) => (
                         <TableRow key={row.name}>
-                          <TableCell>{row.name}</TableCell>
-                          <TableCell>{row.data}</TableCell>
+                          <TableCell><Link href={row.url} target="_blank" rel="noreferrer noopener">{row.name}</Link></TableCell>
+                          <TableCell><code>{row.data}</code></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
